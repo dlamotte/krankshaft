@@ -12,7 +12,7 @@ install_requires = [
     'mimeparse==0.1.3',
 ]
 
-tests_require = [
+tests_requires = [
     'dj-database-url==0.2.1',
     'django-nose==1.1',
     'psycopg2==2.4.5',
