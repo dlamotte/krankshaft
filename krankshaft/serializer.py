@@ -106,7 +106,7 @@ class Serializer(object):
 
         Deserialize a request body into a data-structure.
         '''
-        method = getattr(self, 'from_%s' % self.get_format(content_type))
+        method = getattr(self, 'from_%s' % self.get_format(content_type)[1])
         return method(body)
 
     def from_json(self, body):
@@ -118,7 +118,7 @@ class Serializer(object):
         Find a suitable format from a content type.
         '''
         content_type = mimeparse.best_match(self.content_types.keys(), accept)
-        return self.content_types[content_type]
+        return content_type, self.content_types[content_type]
 
     def register(self, serializable):
         '''register(MyObject, SerializableMyObject(MyObject))
@@ -138,13 +138,14 @@ class Serializer(object):
         Serialize an object to text.
         '''
         accept = accept or self.default_content_type
-        method = getattr(self, 'to_%s' % self.get_format(accept))
+        content_type, format = self.get_format(accept)
+        method = getattr(self, 'to_%s' % format)
 
         params = mimeparse.parse_mime_type(accept)[2]
         for key, value in params.items():
             opts.setdefault(key, value)
 
-        return method(obj, **opts)
+        return (method(obj, **opts), content_type)
 
     def to_json(self, obj, **opts):
         convert = self.convert
