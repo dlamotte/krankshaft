@@ -82,7 +82,7 @@ class Serializer(object):
             if isinstance(obj, klass):
                 return method(obj)
 
-        for klass in (obj.__class__, ) + obj.__bases__:
+        for klass in (obj.__class__, ) + getattr(obj, '__bases__', ()):
             if klass in self.registered:
                 serializable = self.registered[klass](obj)
                 return serializable.convert(**opts)
@@ -148,14 +148,15 @@ class Serializer(object):
 
     def to_json(self, obj, **opts):
         convert = self.convert
-        if opts:
-            convert = partial(convert, **opts)
-
         dopts = {}
+
         if 'indent' in opts:
             try:
                 dopts['indent'] = int(opts.pop('indent'))
             except ValueError:
                 pass
+
+        if opts:
+            convert = partial(convert, **opts)
 
         return json.dumps(obj, default=convert, **dopts)
