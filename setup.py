@@ -12,6 +12,13 @@ install_requires = [
     'mimeparse==0.1.3',
 ]
 
+tests_require = [
+    'dj-database-url==0.2.1',
+    'django-nose==1.1',
+    'psycopg2==2.4.5',
+    'nose-cov==1.6',
+]
+
 long_description = ''
 try:
     long_description = open('README.md').read()
@@ -30,8 +37,8 @@ setup(
     zip_safe=False,
     install_requires=install_requires,
     license='MIT',
-    #tests_require=tests_requires,
-    #test_suite='runtests.runtests',
+    tests_require=tests_requires,
+    test_suite='runtests.runtests',
     include_package_data=True,
     classifiers=[
         'Development Status :: 3 - Alpha',
