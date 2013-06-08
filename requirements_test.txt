@@ -5,3 +5,4 @@ dj-database-url==0.2.1
 django-nose==1.1
 nose-cov==1.6
 psycopg2==2.4.5
+tox==1.4.3
