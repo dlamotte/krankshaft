@@ -13,10 +13,12 @@ install_requires = [
 ]
 
 tests_requires = [
+    'Django==1.5.1',
     'dj-database-url==0.2.1',
     'django-nose==1.1',
     'psycopg2==2.4.5',
     'nose-cov==1.6',
+    'pytz==2013b',
 ]
 
 long_description = ''
