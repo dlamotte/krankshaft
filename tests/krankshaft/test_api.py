@@ -267,6 +267,17 @@ class APITest(TestCaseNoDB):
             'text/plain'
         )
 
+    def test_serialize(self):
+        data = {'one': 1}
+        request = self.make_request(HTTP_ACCEPT='application/json; indent=4')
+        response = self.api.serialize(request, 200, data)
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+        self.assertEquals(response.content, json.dumps(data, indent=4))
+
     @property
     def urls(self):
         from django.conf.urls import url
