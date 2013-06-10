@@ -17,11 +17,24 @@ class Auth(AuthBase):
 class API(APIBase):
     Auth = Auth
 
+
+class AuthzDeny(Authz):
+    def is_authorized_request(self, request, authned):
+        return False
+
+class AuthDeny(AuthBase):
+    authn = Authn()
+    authz = AuthzDeny()
+
+class APIDeny(APIBase):
+    Auth = AuthDeny
+
 class APITest(TestCaseNoDB):
     def _pre_setup(self):
         self.api = API('v1')
         self.apid = API('v1', debug=True)
         self.api_error = API('v1', debug=True, error='custom error message')
+        self.api_deny = APIDeny('v1')
         super(APITest, self)._pre_setup()
 
     def test_abort(self):
@@ -38,6 +51,23 @@ class APITest(TestCaseNoDB):
             self.assertEquals(response, exc.response)
 
         self.assertRaises(KrankshaftError, self.api.abort, response, Header='')
+
+    def test_deny(self):
+        response = self.client.get('/deny/?key=value')
+        self.assertEquals(response.status_code, 401)
+        self.assertTrue(not response.content)
+
+    def test_deny_decorator_only(self):
+        response = self.client.get('/deny-decorator-only/?key=value')
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+        self.assertEquals(
+            json.loads(response.content),
+            {'key': 'value'}
+        )
 
     def test_deserialize_delete_get_head_options(self):
         for method in (
@@ -115,6 +145,27 @@ class APITest(TestCaseNoDB):
         )
         self.assertEquals(response.status_code, 400)
 
+    def test_deserialize_invalid_content_length(self):
+        request = self.make_request('POST',
+            data='{"key": "value"}',
+            content_type='application/json',
+            CONTENT_LENGTH='a'
+        )
+        query, data = self.api.deserialize(request)
+        self.assertTrue(not data)
+
+    def test_deserialize_invalid_content_nonabortable(self):
+        request = self.make_request('POST',
+            data='!',
+            content_type='application/json'
+        )
+        self.assertRaises(
+            ValueError,
+            self.api.deserialize,
+            request,
+            abortable=False
+        )
+
     def test_deserialize_unsupported_content_type(self):
         response = self.client.post(
             '/serialize-payload/',
@@ -122,6 +173,18 @@ class APITest(TestCaseNoDB):
             content_type='unsupported/content-type'
         )
         self.assertEquals(response.status_code, 415)
+
+    def test_deserialize_unsupported_content_type_nonabortable(self):
+        request = self.make_request('POST',
+            data='!',
+            content_type='unsupported/content-type'
+        )
+        self.assertRaises(
+            self.api.serializer.Unsupported,
+            self.api.deserialize,
+            request,
+            abortable=False
+        )
 
     def test_deserialize_invalid_query_string(self):
         response = self.client.get('/serialize-payload/?key=value&invalid')
@@ -282,6 +345,9 @@ class APITest(TestCaseNoDB):
     def urls(self):
         from django.conf.urls import url
         return self.make_urlconf(
+            url('^deny/$', self.api_deny(self.view_serialize_payload)),
+            url('^deny-decorator-only/$',
+                self.api_deny(only=True)(self.view_serialize_payload)),
             url('^serialize-payload/$', self.api(self.view_serialize_payload)),
         )
 

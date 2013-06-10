@@ -10,10 +10,13 @@ class TestCaseBase(TestCase):
     def make_request(self,
         method='GET',
         path='/',
-        data={},
+        data=None,
         content_type=None,
         **extra
     ):
+        if data is None:
+            data = {}
+
         payload = None
         content_length = None
         if method not in ('DELETE', 'GET', 'HEAD', 'OPTIONS'):
