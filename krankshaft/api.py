@@ -116,7 +116,7 @@ class API(object):
 
                     return view(request, *args, **kwargs)
                 except Exception:
-                    return self.handle_exc(request, message=error)
+                    return self.handle_exc(request, error=error)
 
             return self.update_view(call)
 
@@ -229,7 +229,7 @@ class API(object):
         data.update(more)
         return data
 
-    def handle_exc(self, request, exc_info=True, message=None):
+    def handle_exc(self, request, exc_info=True, error=None):
         '''handle_exc(request) -> response
 
         Handle arbitrary exceptions.  Serves two main purposes:
@@ -245,19 +245,19 @@ class API(object):
             return inst.response
 
         else:
-            return self.handler500(request, exc_info, message=message)
+            return self.handler500(request, exc_info, error=error)
 
-    def handler500(self, request, exc_info, message=None):
+    def handler500(self, request, exc_info, error=None):
         '''handler500(request, sys.exc_info())
 
         Returns a 500 response with error details.
         '''
         exc, inst, tb = exc_info
-        message = message or self.error
+        error = error or self.error
 
         log.error(
             '%s, %s: %s',
-                message,
+                error,
                 exc.__name__,
                 inst,
             exc_info=exc_info,
@@ -265,7 +265,7 @@ class API(object):
         )
 
         data = {
-            'error': message,
+            'error': error,
         }
 
         if self.debug:
@@ -274,12 +274,12 @@ class API(object):
                 traceback.format_exception(*exc_info)
             )
 
-        data = self.hook_500(data, exc_info)
+        data = self.hook_500(data, request, exc_info)
 
         return self.serialize(request, 500, data)
 
-    def hook_500(self, data, exc_info):
-        '''hook_500(data, exc_info) -> data
+    def hook_500(self, data, request, exc_info):
+        '''hook_500(data, request, exc_info) -> data
 
         Convenience hook for changing data returned from a 500.
         '''

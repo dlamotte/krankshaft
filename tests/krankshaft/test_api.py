@@ -8,6 +8,7 @@ from krankshaft.exceptions import KrankshaftError
 from tempfile import NamedTemporaryFile
 from tests.base import TestCaseNoDB
 import json
+import sys
 
 class Auth(AuthBase):
     authn = Authn()
@@ -19,6 +20,8 @@ class API(APIBase):
 class APITest(TestCaseNoDB):
     def _pre_setup(self):
         self.api = API('v1')
+        self.apid = API('v1', debug=True)
+        self.api_error = API('v1', debug=True, error='custom error message')
         super(APITest, self)._pre_setup()
 
     def test_abort(self):
@@ -131,6 +134,111 @@ class APITest(TestCaseNoDB):
             json.loads(response.content),
             {'key': 'value', 'invalid': ''}
         )
+
+    def test_handle_exc_abort(self):
+        request = self.make_request()
+        try:
+            self.api.abort(400)
+        except Exception:
+            response = self.api.handle_exc(request)
+
+        self.assertEquals(response.status_code, 400)
+
+    def test_handle_exc_unhandled_exception(self):
+        request = self.make_request()
+        try:
+            {}['key']
+        except Exception:
+            response = self.api.handle_exc(request)
+
+        self.assertEquals(response.status_code, 500)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+
+        data = json.loads(response.content)
+        self.assertEquals(data['error'], self.api.error)
+        self.assertTrue('exception' not in data)
+        self.assertTrue('traceback' not in data)
+
+    def test_handle_exc_unhandled_exception_debug(self):
+        request = self.make_request()
+        try:
+            {}['key']
+        except Exception:
+            response = self.apid.handle_exc(request)
+
+        self.assertEquals(response.status_code, 500)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+
+        data = json.loads(response.content)
+        self.assertEquals(data['error'], self.apid.error)
+        self.assertEquals(data['exception'], "KeyError: 'key'")
+        self.assertTrue(data['traceback'])
+
+    def test_handle_exc_unhandled_exception_debug_custom(self):
+        request = self.make_request()
+        try:
+            {}['key']
+        except Exception:
+            response = self.apid.handle_exc(request, error='myerror')
+
+        self.assertEquals(response.status_code, 500)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+
+        data = json.loads(response.content)
+        self.assertEquals(data['error'], 'myerror')
+        self.assertEquals(data['exception'], "KeyError: 'key'")
+        self.assertTrue(data['traceback'])
+
+    def test_handle_exc_unhandled_exception_debug_custom_init(self):
+        request = self.make_request()
+        try:
+            {}['key']
+        except Exception:
+            response = self.api_error.handle_exc(request)
+
+        self.assertEquals(response.status_code, 500)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+
+        data = json.loads(response.content)
+        self.assertEquals(data['error'], self.api_error.error)
+        self.assertEquals(data['exception'], "KeyError: 'key'")
+        self.assertTrue(data['traceback'])
+
+    def test_handle_exc_unhandled_exception_debug_specific(self):
+        request = self.make_request()
+        try:
+            {}['key']
+        except Exception:
+            exc_info_keyerror = sys.exc_info()
+
+        try:
+            [][1]
+        except Exception:
+            exc_info_indexerror = sys.exc_info()
+            response = self.apid.handle_exc(request, exc_info=exc_info_keyerror)
+
+        self.assertEquals(response.status_code, 500)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+
+        data = json.loads(response.content)
+        self.assertEquals(data['error'], self.apid.error)
+        self.assertEquals(data['exception'], "KeyError: 'key'")
+        self.assertTrue(data['traceback'])
 
     @property
     def urls(self):
