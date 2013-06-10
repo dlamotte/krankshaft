@@ -48,6 +48,10 @@ class SerializerConvertTest(TestCaseNoDB):
             [self.dt_expect]
         )
 
+    def test_primitive(self):
+        for value in self.serializer.primitive_values + (1, 1L, 1.1, 'a', u'a'):
+            self.assertEquals(value, self.serializer.convert(value))
+
     def test_time(self):
         self.do(self.dt.time(), self.value(self.dt_expect.split('T')[1]))
 
