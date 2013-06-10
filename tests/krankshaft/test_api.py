@@ -254,6 +254,19 @@ class APITest(TestCaseNoDB):
                 self.assertEquals(e.response.status_code, code)
                 self.assertEquals(e.response['Location'], '/')
 
+    def test_response(self):
+        response = self.api.response(
+            200,
+            'content',
+            Content_Type='text/plain'
+        )
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(response.content, 'content')
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'text/plain'
+        )
+
     @property
     def urls(self):
         from django.conf.urls import url
