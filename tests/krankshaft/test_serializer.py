@@ -52,6 +52,14 @@ class SerializerConvertTest(TestCaseNoDB):
         for value in self.serializer.primitive_values + (1, 1L, 1.1, 'a', u'a'):
             self.assertEquals(value, self.serializer.convert(value))
 
+    def test_serializer_default_content_type(self):
+        serializer = Serializer(
+            default_content_type='application/json'
+        )
+        content, content_type = serializer.serialize({'key': 'value'})
+        self.assertEquals(content, '{"key": "value"}')
+        self.assertEquals(content_type, 'application/json')
+
     def test_time(self):
         self.do(self.dt.time(), self.value(self.dt_expect.split('T')[1]))
 
@@ -128,6 +136,15 @@ class SerializerSerializeTest(TestCaseNoDB):
         self.assertEquals(
             content,
             '{\n    "key": "%s"\n}' % self.dt_expect
+        )
+
+    def test_application_json_indent_invalid(self):
+        content, content_type = \
+            self.serializer.serialize(self.data, 'application/json; indent=a')
+        self.assertEquals(content_type, 'application/json')
+        self.assertEquals(
+            content,
+            '{"key": "%s"}' % self.dt_expect
         )
 
     def test_application_json_q(self):
