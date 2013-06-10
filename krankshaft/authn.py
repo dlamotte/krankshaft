@@ -9,6 +9,8 @@ class Authn(object):
     Basic interface for any authenticator.  Always returns the request as
     not authenticated.
     '''
+    expect = None
+
     def __init__(self, realm=None):
         self.use_realm = realm
 
@@ -23,10 +25,6 @@ class Authn(object):
 
     def challenge(self, request, response):
         return response
-
-    @property
-    def expect(self):
-        return None
 
     def find_realm(self):
         return ''
@@ -104,6 +102,8 @@ class AuthnDjangoAPIToken(AuthnDjango):
     to make it possible to have credentials for a user separate from the
     password that are easily invalidated in one way or another.
     '''
+    expect = 'apitoken'
+
     def __init__(self, model, **kwargs):
         super(AuthnDjangoAPIToken, self).__init__(**kwargs)
         self.model = self.model
@@ -123,10 +123,6 @@ class AuthnDjangoAPIToken(AuthnDjango):
         response['WWW-Authenticate'] = 'APIToken Realm="%s"' % self.realm
         return response
 
-    @property
-    def expect(self):
-        return 'apitoken'
-
     def is_valid(self, authned):
         return authned.is_valid()
 
@@ -134,6 +130,8 @@ class AuthnDjangoBasic(AuthnDjango):
     '''
     Basic authentication using Django's Auth framework.
     '''
+    expect = 'basic'
+
     def authenticate(self, request):
         try:
             username, password = self.parse(request)
@@ -148,10 +146,6 @@ class AuthnDjangoBasic(AuthnDjango):
     def challenge(self, request, response):
         response['WWW-Authenticate'] = 'Basic Realm="%s"' % self.realm
         return response
-
-    @property
-    def expect(self):
-        return 'basic'
 
 class AuthnDjangoMiddleware(AuthnDjango):
     '''
