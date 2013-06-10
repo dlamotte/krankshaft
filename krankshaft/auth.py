@@ -51,7 +51,7 @@ class Auth(object):
         if not self.authn:
             return None
 
-        authned = self.authn.authenticate(request)
+        authned = self.authn.authenticate(self.request)
         if authned and self.authn.is_valid(authned):
             self.authned = authned
             return self.authned

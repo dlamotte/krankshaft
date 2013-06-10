@@ -10,14 +10,14 @@
 # TODO transactions
 
 from .auth import Auth
-from .exceptions import Abort
+from .exceptions import Abort, KrankshaftError
 from .serializer import Serializer
 from .throttle import Throttle
 import functools
 import logging
-import mimeparse
 import sys
 import traceback
+import urlparse
 
 log = logging.getLogger(__name__)
 
@@ -99,42 +99,44 @@ class API(object):
             only: only wrap the method to provide
                 .abort()/unhandled-exception support
         '''
-        def _decorator(f):
-            @functools.wraps(f)
-            def _call(request, *args, **kwargs):
+        def decorator(view):
+            @functools.wraps(view)
+            def call(request, *args, **kwargs):
                 try:
                     if only:
-                        return f(request, *args, **kwargs)
+                        return view(request, *args, **kwargs)
 
                     if auth:
+                        Auth = auth
                         if auth is True:
-                            auth = self.Auth
-                        _auth = self.auth(request, Auth=auth)
+                            Auth = self.Auth
+                        _auth = self.auth(request, Auth=Auth)
                         if not _auth:
                             return _auth.challenge(self.response(401))
 
-                    return f(request, *args, **kwargs)
+                    return view(request, *args, **kwargs)
                 except Exception:
                     return self.handle_exc(request, message=error)
 
-            return self.update_view(_call)
+            return self.update_view(call)
 
         if f:
             # used as a decorator
             # @api
             # def view(...):
-            return _decorator(f)
+            return decorator(f)
 
         else:
             # passing params, return will be used as a decorator
             # @api(param=val)
             # def view(...):
-            return _decorator
+            return decorator
 
     def abort(self, status_or_response, **headers):
         '''abort(401)
 
-        Return HTTP Response with given status.
+        Abort current execution with HTTP Response with given status.  If a
+        response is given, abort current execution with given response.
 
         Example:
 
@@ -157,8 +159,11 @@ class API(object):
                 self.response(status=status_or_response, **headers)
             )
         else:
-            assert not headers
-            raise self.Abort(response)
+            if headers:
+                raise KrankshaftError(
+                    'Cannot pass headers with given a response'
+                )
+            raise self.Abort(status_or_response)
 
     def auth(self, request, Auth=None):
         '''auth(request) -> auth
@@ -170,33 +175,55 @@ class API(object):
         auth.authenticate()
         return auth
 
-    def deserialize(self, request):
-        '''deserialize(request) -> data
+    def deserialize(self, request, abortable=True):
+        '''deserialize(request) -> query, body
 
-        Read in the request data to a native data structure.
+        Read in the request data to a native data structures.
         '''
-        data = {}
-        if request.method == 'GET':
-            return request.GET
+        from django.utils.datastructures import MultiValueDict
 
-        form_content_types = [
-            'application/x-www-form-urlencoded',
-            'multipart/form-data',
-        ]
+        try:
+            query = urlparse.parse_qs(
+                request.META.get('QUERY_STRING', ''),
+                keep_blank_values=True
+            )
+            query = MultiValueDict(query)
 
-        content_type = request.META['CONTENT_TYPE']
-        if mimeparse.best_match(form_content_types, content_type):
-            data = request.POST
-            data.update(request.FILES)
-            return data
+            content_type = request.META.get('CONTENT_TYPE')
+            content_length = request.META.get('HTTP_CONTENT_LENGTH',
+                request.META.get('CONTENT_LENGTH', 0)
+            )
+            try:
+                content_length = int(content_length)
+            except ValueError:
+                content_length = 0
 
-        else:
-            return self.serializer.deserialize(request.body, content_type)
+            if content_type and content_length > 0:
+                data = self.serializer.deserialize_request(
+                    request,
+                    content_type
+                )
+            else:
+                data = {}
+            data = MultiValueDict(data)
+
+            return (query, data)
+        except ValueError:
+            if abortable:
+                self.abort(400)
+            else:
+                raise
+
+        except self.serializer.Unsupported:
+            if abortable:
+                self.abort(415)
+            else:
+                raise
 
     def extra(self, **more):
         data = {
+            'api': self.name,
             'debug': self.debug,
-            'name': self.name,
             'stack': True,
         }
         data.update(more)
@@ -229,8 +256,9 @@ class API(object):
         message = message or self.error
 
         log.error(
-            '%s: %s',
+            '%s, %s: %s',
                 message,
+                exc.__name__,
                 inst,
             exc_info=exc_info,
             extra=self.extra(),
@@ -241,7 +269,7 @@ class API(object):
         }
 
         if self.debug:
-            data['exception'] = str(inst)
+            data['exception'] = '%s: %s' % (exc.__name__, inst)
             data['traceback'] = '\n'.join(
                 traceback.format_exception(*exc_info)
             )

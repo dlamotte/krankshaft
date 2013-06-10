@@ -2,8 +2,11 @@ from __future__ import absolute_import
 
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from django.core.handlers.wsgi import WSGIRequest
+from django.test.client import FakePayload
 from krankshaft.serializer import Serializer
 from tests.base import TestCaseNoDB
+from urlparse import urlparse
 import pytz
 
 class SerializerConvertTest(TestCaseNoDB):
@@ -131,7 +134,6 @@ class SerializerSerializeTest(TestCaseNoDB):
             content,
             '{"key": "%s"}' % self.dt_expect
         )
-        # TODO missing validation that 'q' option is actually passed in
 
     def test_default(self):
         content, content_type = \
@@ -140,6 +142,13 @@ class SerializerSerializeTest(TestCaseNoDB):
         self.assertEquals(
             content,
             '{"key": "%s"}' % self.dt_expect
+        )
+
+    def test_unsupported(self):
+        self.assertRaises(
+            self.serializer.Unsupported,
+            self.serializer.get_format,
+            'unsupported/content-type'
         )
 
 class SerializerDeserializeTest(TestCaseNoDB):
@@ -160,4 +169,61 @@ class SerializerDeserializeTest(TestCaseNoDB):
                 .deserialize('{"key": "value"}', 'application/json; indent=4')
         )
 
-    # TODO deserialization of datetimes (with timezone), ...
+    def test_invalid_data(self):
+        for content_type in self.serializer.content_types.keys():
+            if content_type.startswith('multipart/'):
+                continue
+            self.assertRaises(
+                ValueError,
+                self.serializer.deserialize,
+                'invalid body data',
+                content_type
+            )
+
+    def test_invalid_multipart_boundary(self):
+        data = 'data'
+        boundary = '\xffinvalid boundary'
+        parsed = urlparse('/path/')
+        environ = self.client._base_environ(**{
+            'CONTENT_TYPE': 'multipart/form-data; boundary=%s' % boundary,
+            'CONTENT_LENGTH': len(data),
+            'PATH_INFO': self.client._get_path(parsed),
+            'QUERY_STRING': parsed[4],
+            'REQUEST_METHOD': 'POST',
+            'wsgi.input': FakePayload(data),
+        })
+        request = WSGIRequest(environ)
+
+        for content_type in self.serializer.content_types.keys():
+            if not content_type.startswith('multipart/'):
+                continue
+            self.assertRaises(
+                ValueError,
+                self.serializer.deserialize_request,
+                request,
+                request.META['CONTENT_TYPE']
+            )
+
+    def test_invalid_multipart_content_length(self):
+        data = 'data'
+        boundary = 'boundary'
+        parsed = urlparse('/path/')
+        environ = self.client._base_environ(**{
+            'CONTENT_TYPE': 'multipart/form-data; boundary=%s' % boundary,
+            'CONTENT_LENGTH': -1,
+            'PATH_INFO': self.client._get_path(parsed),
+            'QUERY_STRING': parsed[4],
+            'REQUEST_METHOD': 'POST',
+            'wsgi.input': FakePayload(data),
+        })
+        request = WSGIRequest(environ)
+
+        for content_type in self.serializer.content_types.keys():
+            if not content_type.startswith('multipart/'):
+                continue
+            self.assertRaises(
+                ValueError,
+                self.serializer.deserialize_request,
+                request,
+                request.META['CONTENT_TYPE']
+            )

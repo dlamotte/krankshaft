@@ -1,9 +1,11 @@
 from .exceptions import KrankshaftError
+from cStringIO import StringIO
 from datetime import datetime, date, time, timedelta
 from functools import partial
 import decimal
 import json
 import mimeparse
+import urlparse
 
 class Serializer(object):
     '''
@@ -11,9 +13,12 @@ class Serializer(object):
     serialize objects to a data representation.
     '''
     class SerializableExists(KrankshaftError): pass
+    class Unsupported(KrankshaftError): pass
 
     content_types = {
         'application/json': 'json',
+        'application/x-www-form-urlencoded': 'urlencoded',
+        'multipart/form-data': 'multipart_form_data',
     }
     default_content_type = 'application/json'
 
@@ -101,15 +106,47 @@ class Serializer(object):
     def convert_unknown(self, obj):
         raise TypeError(repr(obj) + ' is not serializable')
 
-    def deserialize(self, body, content_type):
+    def deserialize(self, body, content_type, **opts):
         '''deserialize(body, content_type) -> data
 
         Deserialize a request body into a data-structure.
         '''
         method = getattr(self, 'from_%s' % self.get_format(content_type)[1])
-        return method(body)
+        return method(body, content_type=content_type, **opts)
 
-    def from_json(self, body):
+    def deserialize_request(self, request, content_type, **opts):
+        format = self.get_format(content_type)[1]
+        if format == 'multipart_form_data':
+            return self.from_multipart_form_data(request, **opts)
+        else:
+            return self.deserialize(request.body, content_type, **opts)
+
+    def from_urlencoded(self, body, **opts):
+        return urlparse.parse_qs(
+            body,
+            keep_blank_values=True,
+            strict_parsing=True
+        )
+
+    def from_multipart_form_data(self, request, **opts):
+        from django.utils.datastructures import MultiValueDict
+
+        # XXX not thrilled with this, but django itself uses an 'expect:' clause
+        # to handle errors in this... so this is only slightly better...
+        try:
+            if hasattr(request, '_body'):
+                data = StringIO(request._body)
+            else:
+                data = request
+            post, files = request.parse_file_upload(request.META, data)
+            data = MultiValueDict()
+            data.update(post)
+            data.update(files)
+            return data
+        except Exception, e:
+            raise ValueError(str(e))
+
+    def from_json(self, body, **opts):
         return json.loads(body)
 
     def get_format(self, accept):
@@ -118,6 +155,8 @@ class Serializer(object):
         Find a suitable format from a content type.
         '''
         content_type = mimeparse.best_match(self.content_types.keys(), accept)
+        if not content_type:
+            raise self.Unsupported(accept)
         return content_type, self.content_types[content_type]
 
     def register(self, serializable):
