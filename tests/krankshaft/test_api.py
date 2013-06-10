@@ -240,6 +240,20 @@ class APITest(TestCaseNoDB):
         self.assertEquals(data['exception'], "KeyError: 'key'")
         self.assertTrue(data['traceback'])
 
+    def test_redirect(self):
+        for code in (301, 302):
+            response = self.api.redirect(code, '/hello world/')
+            self.assertEquals(response.status_code, code)
+            self.assertEquals(response['Location'], '/hello%20world/')
+
+    def test_redirect_abort(self):
+        for code in (301, 302):
+            try:
+                self.api.abort(self.api.redirect(code, '/'))
+            except Exception, e:
+                self.assertEquals(e.response.status_code, code)
+                self.assertEquals(e.response['Location'], '/')
+
     @property
     def urls(self):
         from django.conf.urls import url

@@ -319,14 +319,12 @@ class API(object):
         '''
         from django import http
 
-        if status in (301, 302, 304):
+        if status in (301, 302):
             location = headers.pop('Location', '')
             if status == 301:
                 response = http.HttpResponsePermanentRedirect(location)
             elif status == 302:
                 response = http.HttpResponseRedirect(location)
-            elif status == 304:
-                response = http.HttpResponseNotModified(location)
 
         else:
             response = http.HttpResponse(status=status)
