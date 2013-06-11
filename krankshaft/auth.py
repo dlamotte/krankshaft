@@ -69,7 +69,8 @@ class Auth(object):
     @property
     def id(self):
         '''
-        A unique identifier for a request.
+        A unique identifier for a request.  If not authenticated, the
+        REMOTE_ADDR of the request is used.
         '''
         if self.authned:
             return '%s-%s' % (
@@ -78,7 +79,7 @@ class Auth(object):
             )
 
         else:
-            return None
+            return 'anon-%s' % self.request.META.get('REMOTE_ADDR', 'noaddr')
 
     def is_authenticated(self):
         '''is_authenticated() -> bool

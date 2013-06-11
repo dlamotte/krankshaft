@@ -9,6 +9,7 @@
 # TODO stop **headers crap, make a headers object and pass that around...
 # TODO transactions
 
+from . import util
 from .auth import Auth
 from .exceptions import Abort, KrankshaftError
 from .serializer import Serializer
@@ -330,8 +331,7 @@ class API(object):
             response = http.HttpResponse(status=status)
 
         for name, val in headers.items():
-            name = name.replace('_', '-')
-            response[name] = val
+            response[util.kw_as_header(name)] = val
 
         if content:
             response.content = content
