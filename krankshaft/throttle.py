@@ -32,7 +32,7 @@ class Throttle(object):
     takes for a client over its quota to be able to make another request.
     '''
     bucket_ratio = 0.1
-    format = 'throttle_%(id)s'
+    format = 'throttle_%(id)s%(suffix)s'
     rate = None
     timer = time.time
 
@@ -52,7 +52,6 @@ class Throttle(object):
 
             if not self.bucket:
                 self.bucket = int(self.rate[1] * self.bucket_ratio)
-            self.nbuckets = int(self.rate[1] / self.bucket)
 
     def allow(self, auth, suffix=None):
         '''allow(auth) -> (bool, headers)
@@ -63,7 +62,7 @@ class Throttle(object):
         is not allowed.
         '''
         if not self.rate:
-            return True
+            return (True, {})
 
         key = self.key(auth, suffix)
         bsize = self.bucket
@@ -72,11 +71,9 @@ class Throttle(object):
 
         current = now - (now % bsize)
         buckets = [current]
-        first = now - (now % nsec)
-        for i in range(self.nbuckets):
+        first = now - nsec
+        while current > first:
             current -= bsize
-            if current < first:
-                break
             buckets.append(current)
 
         buckets = [
@@ -86,7 +83,7 @@ class Throttle(object):
 
         cached = self.cache.get_many([bkey for bucket, bkey in buckets])
         buckets = [
-            (bucket, bkey, cached[bkey])
+            (bucket, bkey, cached.get(bkey))
             for bucket, bkey in buckets
         ]
 
@@ -137,13 +134,23 @@ class Throttle(object):
 
         Construct a key for the authenticated client.
         '''
-        return (self.format % auth.id) + (suffix or '')
+        return self.format % self.key_values(auth, suffix)
+
+    def key_values(self, auth, suffix):
+        return {
+            'id': auth.id,
+            'suffix': (suffix and ('_' + suffix) or ''),
+        }
 
     @property
     def timeout(self):
+        # its possible that if the current moment is exactly the same second
+        # a bucket would be created, then the amount of buckets needed to
+        # calculate is: (rate[1] / bucket) + 1
+        #
         # extra bucket of time accounts for lag/latency/skew in time
         #
         # 3, 2 second buckets for a total 6 second window
-        #   | | | |  bucket markers
-        #    ^     ^ first caret is beginning of window, second caret is now
-        return self.rate[1] + self.bucket
+        #   | | | | bucket markers
+        #   ^     ^ first caret is beginning of window, second caret is now
+        return self.rate[1] + (self.bucket * 2)
