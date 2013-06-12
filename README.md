@@ -6,19 +6,14 @@ A Web API Framework (with Django, ...).
 [![Build Status](https://secure.travis-ci.org/dlamotte/krankshaft.png)](http://travis-ci.org/dlamotte/krankshaft)
 [![pypi version](https://pypip.in/v/krankshaft/badge.png)](https://pypi.python.org/pypi/krankshaft)
 
-The crankshaft in an engine translates power from pistons into rotation to power
-the wheels of a vehicle.
-
-In a similar way, krankshaft translates power from the framework and
-persistence layer into something that can be used externally (ok, its probably
-a pretty loose/bad metaphor).
-
 purpose
 =======
 
-Frustrated with the current state of Python Web API Frameworks, krankshaft was
-designed to make the frustrating and unnecessarily complicated parts of Web
-APIs simple and beautiful by default.
+krankshaft was designed to make the frustrating and unnecessarily complicated
+parts of Web APIs simple and beautiful by default.  It's built in layers that
+allow the programmer to easily opt-in/out of.  From "Expose this model via
+a web api and handle all the details" to "hands off my API, just handle the
+basics for me".
 
 krankshaft is meant to be a framework to build Web APIs and grow with your
 application.
@@ -102,6 +97,7 @@ what works
 * serialization of primitive types (complex types require sub-classing)
   respecting HTTP Accept Header
 * abort (raise-like http response return)
+* throttling
 
 TODO
 ====
@@ -113,4 +109,3 @@ TODO
 * flask support
 * model serialization (but first, some helpers)
 * pagination
-* throttling
