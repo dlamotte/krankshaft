@@ -29,6 +29,7 @@ class AuthDeny(AuthBase):
 class APIDeny(APIBase):
     Auth = AuthDeny
 
+# TODO test throttling api decorator
 class APITest(TestCaseNoDB):
     def _pre_setup(self):
         self.api = API('v1')

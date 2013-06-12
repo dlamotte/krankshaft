@@ -22,6 +22,12 @@ class Throttle(object):
     throttles for a single authenticated user or for a single throttle per
     endpoint.
 
+    There are also anon_bucket and anon_rate which are used for clients that
+    are not authenticated.  By default, if only a rate is specified, the
+    anonymous rate and bucket sizes are considerably smaller.  The reason being
+    that by default, anonymous clients shouldn't have the same rate limits of
+    an authenticated client or what would be the point of authenticating?
+
     The main goal of this implementation is to throttle requests in a constant
     time lookup so that the maximum number of requests doesnt define how long
     it takes to calculate if a request is allowed (which would be O(n)).  In
@@ -31,29 +37,34 @@ class Throttle(object):
     window, the fewer cache requests (the faster the lookup), but the longer it
     takes for a client over its quota to be able to make another request.
     '''
+    anon_reqests_ratio = 0.1
+    anon_bucket_ratio = 0.1
+    anon_rate = None
     bucket_ratio = 0.1
-    anon_ratio = 0.1
     format = 'throttle_%(id)s%(suffix)s'
     rate = None
-    rate_anon = None # TODO anonymous rate-limiting
     timer = time.time
 
-    def __init__(self, bucket=None, cache=None, rate=None):
+    def __init__(self,
+        anon_bucket=None,
+        anon_rate=None,
+        bucket=None,
+        cache=None,
+        rate=None,
+    ):
         self.cache = cache or self.default_cache
         self.rate = rate or self.rate
 
-        self.bucket = bucket
-        if self.bucket and hasattr(self.bucket, 'total_seconds'):
-            self.bucket = int(self.bucket.total_seconds())
+        self.bucket, self.rate = \
+            self.make_bucket_rate(bucket, self.bucket_ratio, self.rate, 1)
 
-        if self.rate:
-            window = self.rate[1]
-            if hasattr(window, 'total_seconds'):
-                window = window.total_seconds()
-            self.rate = (self.rate[0], int(window))
-
-            if not self.bucket:
-                self.bucket = int(self.rate[1] * self.bucket_ratio)
+        self.anon_rate = anon_rate or self.anon_rate or self.rate
+        self.anon_bucket, self.anon_rate = self.make_bucket_rate(
+            anon_bucket,
+            self.anon_bucket_ratio,
+            self.anon_rate,
+            self.anon_reqests_ratio
+        )
 
     def allow(self, auth, suffix=None):
         '''allow(auth) -> (bool, headers)
@@ -63,13 +74,19 @@ class Throttle(object):
         The headers returned should be added to the response when the request
         is not allowed.
         '''
-        if not self.rate:
+        if auth.authned:
+            bsize = self.bucket
+            rate = self.rate
+        else:
+            bsize = self.anon_bucket
+            rate = self.anon_rate
+
+        if not rate:
             return (True, {})
 
-        key = self.key(auth, suffix)
-        bsize = self.bucket
-        nreq, nsec = self.rate
         now = int(self.timer())
+        key = self.key(auth, suffix)
+        nreq, nsec = rate
 
         current = now - (now % bsize)
         buckets = [current]
@@ -137,9 +154,10 @@ class Throttle(object):
                 wait = bucket - first + bsize + 1
                 break
 
-            return (False, {
-                'X-Throttled-For': wait
-            })
+            headers = {}
+            if wait:
+                headers['X-Throttled-For'] = wait
+            return (False, headers)
 
         else:
             try:
@@ -153,6 +171,23 @@ class Throttle(object):
     def default_cache(self):
         from django.core.cache import cache
         return cache
+
+    def make_bucket_rate(self, bucket, bucket_ratio, rate, requests_ratio):
+        if bucket:
+            if hasattr(bucket, 'total_seconds'):
+                bucket = bucket.total_seconds()
+            bucket = int(bucket)
+
+        if rate:
+            window = rate[1]
+            if hasattr(window, 'total_seconds'):
+                window = window.total_seconds()
+            rate = (int(rate[0] * requests_ratio), int(window))
+
+            if not bucket:
+                bucket = int(rate[1] * bucket_ratio)
+
+        return bucket, rate
 
     def key(self, auth, suffix=None):
         '''key(auth) -> key

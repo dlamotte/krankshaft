@@ -5,6 +5,9 @@ from krankshaft.auth import Auth
 from krankshaft.throttle import Throttle
 from tests.base import TestCaseNoDB
 
+class FakeUser(object):
+    id = 1
+
 class ThrottleBaseTest(TestCaseNoDB):
     def setUp(self):
         self.auth = Auth(self.make_request())
@@ -20,6 +23,8 @@ class ThrottleRateTest(TestCaseNoDB):
     def setUp(self):
         from django.core.cache import cache
         self.auth = Auth(self.make_request())
+        self.auth.authned = FakeUser()
+
         self.cache = cache
         self.throttle = Throttle(
             bucket=timedelta(seconds=2),
@@ -60,3 +65,7 @@ class ThrottleRateTest(TestCaseNoDB):
             rate=(1, timedelta(seconds=61)),
         )
         self.test_allow(wait=71)
+
+    def test_allow_anon(self):
+        auth = Auth(self.make_request())
+        self.assertEquals(self.throttle.allow(auth), (False, {}))
