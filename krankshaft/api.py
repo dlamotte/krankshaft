@@ -1,6 +1,5 @@
 # TODO features
 #   - caching
-#   - throttling
 #
 #   - automatic model resources/serialization/...
 #       - form validation... does it even make sense at API level?
@@ -78,7 +77,14 @@ class API(object):
 
         self.serializer = self.Serializer()
 
-    def __call__(self, f=None, auth=True, error=None, only=False):
+    def __call__(self,
+        f=None,
+        auth=True,
+        error=None,
+        only=False,
+        throttle=True,
+        throttle_suffix=None
+    ):
         '''To be used as a decorator.
 
         Only pass keyword arguments to this function.
@@ -95,10 +101,14 @@ class API(object):
 
         Options:
             auth: only authed requests get through (default: True)
-                optionally pass in Auth subclass to replace how Auth is done
+                optionally pass in Auth subclass
             error: message to use in case of unhandled exception
             only: only wrap the method to provide
                 .abort()/unhandled-exception support
+            throttle: rate-limit clients (default: True)
+                optionally pass in Throttle subclass
+            throttle_suffix: suffix the throttle key
+                throttle the view seperately
         '''
         def decorator(view):
             @functools.wraps(view)
@@ -107,13 +117,27 @@ class API(object):
                     if only:
                         return view(request, *args, **kwargs)
 
-                    if auth:
+                    Auth = self.Auth
+                    if auth not in (True, False):
                         Auth = auth
-                        if auth is True:
-                            Auth = self.Auth
-                        _auth = self.auth(request, Auth=Auth)
+
+                    _auth = Auth(request)
+                    if auth:
+                        _auth.authenticate()
                         if not _auth:
                             return _auth.challenge(self.response(401))
+
+                    Throttle = self.Throttle
+                    if throttle not in (True, False):
+                        Throttle = throttle
+
+                    _throttle = Throttle()
+                    if throttle:
+                        allowed, headers = _throttle.allow(_auth,
+                            suffix=throttle_suffix
+                        )
+                        if not allowed:
+                            return self.response(429, **headers)
 
                     return view(request, *args, **kwargs)
                 except Exception:
@@ -134,7 +158,7 @@ class API(object):
             return decorator
 
     def abort(self, status_or_response, **headers):
-        '''abort(401)
+        '''abort(400)
 
         Abort current execution with HTTP Response with given status.  If a
         response is given, abort current execution with given response.
@@ -143,7 +167,7 @@ class API(object):
 
             try:
                 ...
-                api.abort(401)
+                api.abort(400)
                 ...
             except Exception:
                 return api.handle_exc(request)
@@ -153,7 +177,7 @@ class API(object):
             @api
             def view(request):
                 ...
-                api.abort(401)
+                api.abort(400)
         '''
         if isinstance(status_or_response, int):
             raise self.Abort(
@@ -304,6 +328,7 @@ class API(object):
         '''
         return self.response(status, Location=location, **headers)
 
+    # TODO require request to be passed...
     def response(self, status, content=None, **headers):
         '''response(200) -> response
 

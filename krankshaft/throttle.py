@@ -32,8 +32,10 @@ class Throttle(object):
     takes for a client over its quota to be able to make another request.
     '''
     bucket_ratio = 0.1
+    anon_ratio = 0.1
     format = 'throttle_%(id)s%(suffix)s'
     rate = None
+    rate_anon = None # TODO anonymous rate-limiting
     timer = time.time
 
     def __init__(self, bucket=None, cache=None, rate=None):
