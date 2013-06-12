@@ -125,7 +125,7 @@ class API(object):
                     if auth:
                         _auth.authenticate()
                         if not _auth:
-                            return _auth.challenge(self.response(401))
+                            return _auth.challenge(self.response(request, 401))
 
                     Throttle = self.Throttle
                     if throttle not in (True, False):
@@ -137,7 +137,7 @@ class API(object):
                             suffix=throttle_suffix
                         )
                         if not allowed:
-                            return self.response(429, **headers)
+                            return self.response(request, 429, **headers)
 
                     return view(request, *args, **kwargs)
                 except Exception:
@@ -157,8 +157,8 @@ class API(object):
             # def view(...):
             return decorator
 
-    def abort(self, status_or_response, **headers):
-        '''abort(400)
+    def abort(self, request, status_or_response, **headers):
+        '''abort(request, 400)
 
         Abort current execution with HTTP Response with given status.  If a
         response is given, abort current execution with given response.
@@ -167,7 +167,7 @@ class API(object):
 
             try:
                 ...
-                api.abort(400)
+                api.abort(request, 400)
                 ...
             except Exception:
                 return api.handle_exc(request)
@@ -177,11 +177,11 @@ class API(object):
             @api
             def view(request):
                 ...
-                api.abort(400)
+                api.abort(request, 400)
         '''
         if isinstance(status_or_response, int):
             raise self.Abort(
-                self.response(status=status_or_response, **headers)
+                self.response(request, status=status_or_response, **headers)
             )
         else:
             if headers:
@@ -235,13 +235,13 @@ class API(object):
             return (query, data)
         except ValueError:
             if abortable:
-                self.abort(400)
+                self.abort(request, 400)
             else:
                 raise
 
         except self.serializer.Unsupported:
             if abortable:
-                self.abort(415)
+                self.abort(request, 415)
             else:
                 raise
 
@@ -321,16 +321,15 @@ class API(object):
         response['Content-Type'] += '; charset=utf-8'
         return response
 
-    def redirect(self, status, location, **headers):
-        '''redirect(302, '/location') -> response
+    def redirect(self, request, status, location, **headers):
+        '''redirect(request, 302, '/location') -> response
 
         Create a redirect response.
         '''
-        return self.response(status, Location=location, **headers)
+        return self.response(request, status, Location=location, **headers)
 
-    # TODO require request to be passed...
-    def response(self, status, content=None, **headers):
-        '''response(200) -> response
+    def response(self, request, status, content=None, **headers):
+        '''response(request, 200) -> response
 
         Create a response object.
 
@@ -381,7 +380,7 @@ class API(object):
 
         headers['Content-Type'] = content_type
 
-        return self.response(status, content, **headers)
+        return self.response(request, status, content, **headers)
 
     def update_view(self, view):
         '''update_view(view) -> view

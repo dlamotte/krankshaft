@@ -38,19 +38,26 @@ class APITest(TestCaseNoDB):
         super(APITest, self)._pre_setup()
 
     def test_abort(self):
-        self.assertRaises(self.api.Abort, self.api.abort, 401)
+        request = self.make_request()
+        self.assertRaises(self.api.Abort, self.api.abort, request, 401)
         try:
-            self.api.abort(401)
+            self.api.abort(request, 401)
         except Exception, exc:
             self.assertEquals(401, exc.response.status_code)
 
-        response = self.api.response(401)
+        response = self.api.response(request, 401)
         try:
-            self.api.abort(response)
+            self.api.abort(request, response)
         except Exception, exc:
             self.assertEquals(response, exc.response)
 
-        self.assertRaises(KrankshaftError, self.api.abort, response, Header='')
+        self.assertRaises(
+            KrankshaftError,
+            self.api.abort,
+            request,
+            response,
+            Header=''
+        )
 
     def test_deny(self):
         response = self.client.get('/deny/?key=value')
@@ -201,7 +208,7 @@ class APITest(TestCaseNoDB):
     def test_handle_exc_abort(self):
         request = self.make_request()
         try:
-            self.api.abort(400)
+            self.api.abort(request, 400)
         except Exception:
             response = self.api.handle_exc(request)
 
@@ -304,21 +311,24 @@ class APITest(TestCaseNoDB):
         self.assertTrue(data['traceback'])
 
     def test_redirect(self):
+        request = self.make_request()
         for code in (301, 302):
-            response = self.api.redirect(code, '/hello world/')
+            response = self.api.redirect(request, code, '/hello world/')
             self.assertEquals(response.status_code, code)
             self.assertEquals(response['Location'], '/hello%20world/')
 
     def test_redirect_abort(self):
+        request = self.make_request()
         for code in (301, 302):
             try:
-                self.api.abort(self.api.redirect(code, '/'))
+                self.api.abort(request, self.api.redirect(request, code, '/'))
             except Exception, e:
                 self.assertEquals(e.response.status_code, code)
                 self.assertEquals(e.response['Location'], '/')
 
     def test_response(self):
         response = self.api.response(
+            self.make_request(),
             200,
             'content',
             Content_Type='text/plain'
