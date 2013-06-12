@@ -12,8 +12,8 @@ purpose
 krankshaft was designed to make the frustrating and unnecessarily complicated
 parts of Web APIs simple and beautiful by default.  It's built in layers that
 allow the programmer to easily opt-in/out of.  From "Expose this model via
-a web api and handle all the details" to "hands off my API, just handle the
-basics for me".
+a web api and handle all the details" to "hands off my API, I'll opt-into the
+basics as I need them".
 
 krankshaft is meant to be a framework to build Web APIs and grow with your
 application.
