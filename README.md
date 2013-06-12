@@ -33,7 +33,7 @@ Goals:
 example
 =======
 
-This is just a suggested file structure, there are no limitation here.
+This is just a suggested file structure, there is no limitation here.
 
 In `app/apiv1.py`:
 
