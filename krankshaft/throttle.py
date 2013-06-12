@@ -131,6 +131,7 @@ class Throttle(object):
                 #
                 # so the formula becomes:
                 # wait(7) = bucket(44) - first(40) + bsize(2) + 1
+                # TODO this can be more accurate
                 wait = bucket - first + bsize + 1
                 break
 
