@@ -35,7 +35,6 @@ class APITest(TestCaseNoDB):
         self.api = API('v1')
         self.apid = API('v1', debug=True)
         self.api_error = API('v1', debug=True, error='custom error message')
-        self.api_deny = APIDeny('v1')
         super(APITest, self)._pre_setup()
 
     def test_abort(self):
@@ -356,9 +355,12 @@ class APITest(TestCaseNoDB):
     def urls(self):
         from django.conf.urls import url
         return self.make_urlconf(
-            url('^deny/$', self.api_deny(self.view_serialize_payload)),
+            url('^deny/$',
+                self.api(self.view_serialize_payload, auth=AuthDeny)
+            ),
             url('^deny-decorator-only/$',
-                self.api_deny(only=True)(self.view_serialize_payload)),
+                self.api(auth=AuthDeny, only=True)(self.view_serialize_payload)
+            ),
             url('^serialize-payload/$', self.api(self.view_serialize_payload)),
         )
 
