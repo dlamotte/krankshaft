@@ -42,7 +42,7 @@ class Throttle(object):
 
         self.bucket = bucket
         if self.bucket and hasattr(self.bucket, 'total_seconds'):
-            self.bucket = self.bucket.total_seconds()
+            self.bucket = int(self.bucket.total_seconds())
 
         if self.rate:
             window = self.rate[1]
@@ -72,6 +72,7 @@ class Throttle(object):
         current = now - (now % bsize)
         buckets = [current]
         first = now - nsec
+        first = first - (first % bsize) # round down to previous bucket
         while current > first:
             current -= bsize
             buckets.append(current)
@@ -99,17 +100,38 @@ class Throttle(object):
             for bucket, bkey, bval in reversed(buckets):
                 if not bval:
                     continue
-                # ie: nsec = 10, bsize = 2, nreq = 1, now = 51
+                # ie: nsec = 10, bsize = 2, nreq = 1, now = 51, first = 42
                 # buckets = (
-                #   (42, None), # outside window in 1 second
-                #   (44, 1),    # outside window in 3 seconds
+                #   (40, None), # edge of window based on our bucket precision
+                #   (42, None), # edge real window: 1 sec (42 - (now - nsec))
+                #   (44, 1),    # edge real window: 3 sec (44 - (now - nsec))
                 #   (46, None),
                 #   (48, None),
                 #   (50, None)
                 # )
-                # needs to wait 3 seconds to fall off end
-                # wait (3) = now (51) - bucket (44) + 2 * bsize (2)
-                wait = now - bucket + (2 * bsize)
+                # needs to wait 6 seconds to fall off end
+                # wait(6) = bucket(44) - (now(51) - nsec(10)) + bsize(2) + 1
+                #
+                # need to wait the size of a single bucket on top of the
+                # distance to the edge so that the bucket we're saying will
+                # fall off actually falls off
+                #
+                # add one second to account for sub-second truncation,
+                # otherwise, it's possible that a sub-second truncation error
+                # will result in a client issuing a request after waiting for
+                # the given seconds and being throttled
+                #
+                # however, to handle bucket's not being evenly disivible into
+                # the nsec (rate time period) or that now minus nsec lands in
+                # the middle of a bucket, we need to round down to the previous
+                # bucket like:
+                #
+                # first = now - nsec               # edge of the real window
+                # first = first - (first % bsize)  # round down to bucket
+                #
+                # so the formula becomes:
+                # wait(7) = bucket(44) - first(40) + bsize(2) + 1
+                wait = bucket - first + bsize + 1
                 break
 
             return (False, {

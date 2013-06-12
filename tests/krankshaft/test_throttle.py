@@ -26,23 +26,37 @@ class ThrottleRateTest(TestCaseNoDB):
             cache=self.cache,
             rate=(1, timedelta(seconds=10)),
         )
+        self.now = self.throttle.timer()
+        self.throttle.timer = lambda: self.now
 
         # make sure cache is clear
         self.cache.clear()
 
-    def test_allow(self):
+    def test_allow(self, wait=13):
         self.assertEquals(self.throttle.allow(self.auth), (True, {}))
 
         allowed, headers = self.throttle.allow(self.auth)
         self.assertEquals(allowed, False)
 
         nreq, nsec = self.throttle.rate
-        print headers
-        self.assertTrue(headers['X-Throttled-For'] < nsec)
+        self.assertEquals(headers['X-Throttled-For'], wait)
+
+        self.throttle.timer = lambda: self.now + wait
+        allowed, headers = self.throttle.allow(self.auth)
+        self.assertEquals(allowed, True)
+        self.assertTrue(not headers)
 
     def test_allow_default(self):
         self.throttle = Throttle(
             cache=self.cache,
             rate=(1, timedelta(seconds=60)),
         )
-        self.test_allow()
+        self.test_allow(wait=67)
+
+    def test_allow_period_not_evenly_divisible(self):
+        self.throttle = Throttle(
+            bucket=timedelta(seconds=10),
+            cache=self.cache,
+            rate=(1, timedelta(seconds=61)),
+        )
+        self.test_allow(wait=71)
