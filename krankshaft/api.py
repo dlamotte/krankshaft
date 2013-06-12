@@ -56,7 +56,7 @@ class API(object):
     Serializer = Serializer
     Throttle = Throttle
 
-    default_error_message = 'Internal Server Error'
+    error = 'Internal Server Error'
 
     def __init__(self,
         name=''
@@ -74,7 +74,7 @@ class API(object):
         '''
         self.debug = debug
         self.name = name
-        self.error = error or self.default_error_message
+        self.error = error or self.error
 
         self.serializer = self.Serializer()
 
