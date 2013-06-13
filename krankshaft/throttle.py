@@ -37,7 +37,7 @@ class Throttle(object):
     window, the fewer cache requests (the faster the lookup), but the longer it
     takes for a client over its quota to be able to make another request.
     '''
-    anon_reqests_ratio = 0.1
+    anon_requests_ratio = 0.1
     anon_bucket_ratio = 0.1
     anon_rate = None
     bucket_ratio = 0.1
@@ -56,14 +56,17 @@ class Throttle(object):
         self.rate = rate or self.rate
 
         self.bucket, self.rate = \
-            self.make_bucket_rate(bucket, self.bucket_ratio, self.rate, 1)
+            self.make_bucket_rate(bucket, self.bucket_ratio, self.rate)
 
+        anon_requests_ratio = self.anon_requests_ratio
+        if anon_rate or self.anon_rate:
+            anon_requests_ratio = 1
         self.anon_rate = anon_rate or self.anon_rate or self.rate
         self.anon_bucket, self.anon_rate = self.make_bucket_rate(
             anon_bucket,
             self.anon_bucket_ratio,
             self.anon_rate,
-            self.anon_reqests_ratio
+            anon_requests_ratio
         )
 
     def allow(self, auth, suffix=None):
@@ -172,7 +175,7 @@ class Throttle(object):
         from django.core.cache import cache
         return cache
 
-    def make_bucket_rate(self, bucket, bucket_ratio, rate, requests_ratio):
+    def make_bucket_rate(self, bucket, bucket_ratio, rate, requests_ratio=1):
         if bucket:
             if hasattr(bucket, 'total_seconds'):
                 bucket = bucket.total_seconds()

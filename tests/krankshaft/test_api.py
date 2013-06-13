@@ -1,10 +1,14 @@
 from __future__ import absolute_import
 
+from datetime import timedelta
+from django.core.cache import cache
+from functools import partial
 from krankshaft.api import API as APIBase
 from krankshaft.auth import Auth as AuthBase
 from krankshaft.authn import Authn
 from krankshaft.authz import Authz
 from krankshaft.exceptions import KrankshaftError
+from krankshaft.throttle import Throttle
 from tempfile import NamedTemporaryFile
 from tests.base import TestCaseNoDB
 import json
@@ -29,13 +33,24 @@ class AuthDeny(AuthBase):
 class APIDeny(APIBase):
     Auth = AuthDeny
 
-# TODO test throttling api decorator
+ThrottleOne = partial(
+    Throttle,
+    anon_bucket=timedelta(seconds=2),
+    anon_rate=(1, timedelta(seconds=10)),
+    bucket=timedelta(seconds=2),
+    cache=cache,
+    rate=(1, timedelta(seconds=10))
+)
+
 class APITest(TestCaseNoDB):
     def _pre_setup(self):
         self.api = API('v1')
         self.apid = API('v1', debug=True)
         self.api_error = API('v1', debug=True, error='custom error message')
         super(APITest, self)._pre_setup()
+
+        # make sure cache is clear
+        cache.clear()
 
     def test_abort(self):
         request = self.make_request()
@@ -59,12 +74,12 @@ class APITest(TestCaseNoDB):
             Header=''
         )
 
-    def test_deny(self):
+    def test_auth_deny(self):
         response = self.client.get('/deny/?key=value')
         self.assertEquals(response.status_code, 401)
         self.assertTrue(not response.content)
 
-    def test_deny_decorator_only(self):
+    def test_auth_deny_decorator_only(self):
         response = self.client.get('/deny-decorator-only/?key=value')
         self.assertEquals(response.status_code, 200)
         self.assertEquals(
@@ -75,6 +90,11 @@ class APITest(TestCaseNoDB):
             json.loads(response.content),
             {'key': 'value'}
         )
+
+    def test_auth_deny_manual(self):
+        response = self.client.get('/deny-decorator-only-manual/')
+        self.assertEquals(response.status_code, 401)
+        self.assertTrue(not response.content)
 
     def test_deserialize_delete_get_head_options(self):
         for method in (
@@ -351,6 +371,23 @@ class APITest(TestCaseNoDB):
         )
         self.assertEquals(response.content, json.dumps(data, indent=4))
 
+    def test_throttle(self):
+        response = self.client.get('/throttle/?key=value')
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+        self.assertEquals(
+            json.loads(response.content),
+            {'key': 'value'}
+        )
+
+        response = self.client.get('/throttle/?key=value')
+        self.assertEquals(response.status_code, 429)
+        self.assertTrue(not response.content)
+        self.assertEquals(response['X-Throttled-For'], '13')
+
     @property
     def urls(self):
         from django.conf.urls import url
@@ -361,8 +398,22 @@ class APITest(TestCaseNoDB):
             url('^deny-decorator-only/$',
                 self.api(auth=AuthDeny, only=True)(self.view_serialize_payload)
             ),
+            url('^deny-decorator-only-manual/$',
+                self.api(only=True)(self.view_auth_manual)
+            ),
             url('^serialize-payload/$', self.api(self.view_serialize_payload)),
+            url('^throttle/$',
+                self.api(self.view_serialize_payload, throttle=ThrottleOne)
+            ),
         )
+
+    def view_auth_manual(self, request):
+        auth = self.api.auth(request, Auth=AuthDeny)
+        if auth:
+            return self.api.serialize(request, 200, {'authed': True})
+
+        else:
+            return auth.challenge(self.api.response(request, 401))
 
     def view_serialize_payload(self, request):
         query, data = self.api.deserialize(request)

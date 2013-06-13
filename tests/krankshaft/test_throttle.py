@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from datetime import timedelta
+from django.core.cache import cache
 from krankshaft.auth import Auth
 from krankshaft.throttle import Throttle
 from tests.base import TestCaseNoDB
@@ -19,9 +20,9 @@ class ThrottleBaseTest(TestCaseNoDB):
     def test_allow_suffix(self):
         self.assertEquals(self.throttle.allow(self.auth, 'suffix'), (True, {}))
 
+# TODO test suffix
 class ThrottleRateTest(TestCaseNoDB):
     def setUp(self):
-        from django.core.cache import cache
         self.auth = Auth(self.make_request())
         self.auth.authned = FakeUser()
 
