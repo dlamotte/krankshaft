@@ -248,3 +248,13 @@ class SerializerDeserializeTest(TestCaseNoDB):
                 request,
                 request.META['CONTENT_TYPE']
             )
+
+class SerializerFormatTest(TestCaseNoDB):
+    def setUp(self):
+        self.serializer = Serializer()
+
+    def test_get_content_type_json(self):
+        self.assertEquals(
+            self.serializer.get_content_type('json'),
+            'application/json'
+        )

@@ -21,6 +21,9 @@ class Serializer(object):
         'multipart/form-data': 'multipart_form_data',
     }
     default_content_type = 'application/json'
+    format_to_content_type = {
+        'json': 'application/json',
+    }
 
     dict_like_iterables = (
         dict,
@@ -148,6 +151,13 @@ class Serializer(object):
 
     def from_json(self, body, **opts):
         return json.loads(body)
+
+    def get_content_type(self, format):
+        '''get_content_type(format) -> content_type
+
+        Look up a content type from a format.
+        '''
+        return self.format_to_content_type[format]
 
     def get_format(self, accept):
         '''get_format(content_type) -> format
