@@ -20,7 +20,6 @@ class ThrottleBaseTest(TestCaseNoDB):
     def test_allow_suffix(self):
         self.assertEquals(self.throttle.allow(self.auth, 'suffix'), (True, {}))
 
-# TODO test suffix
 class ThrottleRateTest(TestCaseNoDB):
     def setUp(self):
         self.auth = Auth(self.make_request())
@@ -52,6 +51,10 @@ class ThrottleRateTest(TestCaseNoDB):
         self.assertEquals(allowed, True)
         self.assertTrue(not headers)
 
+    def test_allow_anon(self):
+        auth = Auth(self.make_request())
+        self.assertEquals(self.throttle.allow(auth), (False, {}))
+
     def test_allow_default(self):
         self.throttle = Throttle(
             cache=self.cache,
@@ -67,6 +70,34 @@ class ThrottleRateTest(TestCaseNoDB):
         )
         self.test_allow(wait=71)
 
-    def test_allow_anon(self):
-        auth = Auth(self.make_request())
-        self.assertEquals(self.throttle.allow(auth), (False, {}))
+    def test_allow_suffix(self, wait=13):
+        # no suffix
+        self.assertEquals(self.throttle.allow(self.auth), (True, {}))
+
+        allowed, headers = self.throttle.allow(self.auth)
+        self.assertEquals(allowed, False)
+
+        nreq, nsec = self.throttle.rate
+        self.assertEquals(headers['X-Throttled-For'], wait)
+
+        self.throttle.timer = lambda: self.now + wait
+        allowed, headers = self.throttle.allow(self.auth)
+        self.assertEquals(allowed, True)
+        self.assertTrue(not headers)
+
+        # suffix
+        self.throttle.timer = lambda: self.now
+        self.assertEquals(
+            self.throttle.allow(self.auth, suffix='suffix'), (True, {})
+        )
+
+        allowed, headers = self.throttle.allow(self.auth, suffix='suffix')
+        self.assertEquals(allowed, False)
+
+        nreq, nsec = self.throttle.rate
+        self.assertEquals(headers['X-Throttled-For'], wait)
+
+        self.throttle.timer = lambda: self.now + wait
+        allowed, headers = self.throttle.allow(self.auth, suffix='suffix')
+        self.assertEquals(allowed, True)
+        self.assertTrue(not headers)
