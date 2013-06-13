@@ -371,6 +371,19 @@ class APITest(TestCaseNoDB):
         )
         self.assertEquals(response.content, json.dumps(data, indent=4))
 
+    def test_serialize_force_content_type(self):
+        data = {'one': 1}
+        request = self.make_request(HTTP_ACCEPT='application/xml')
+        response = self.api.serialize(request, 200, data,
+            content_type='application/json'
+        )
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(
+            response['Content-Type'].split(';')[0],
+            'application/json'
+        )
+        self.assertEquals(response.content, json.dumps(data))
+
     def test_throttle(self):
         response = self.client.get('/throttle/?key=value')
         self.assertEquals(response.status_code, 200)

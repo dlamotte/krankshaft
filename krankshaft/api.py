@@ -364,17 +364,17 @@ class API(object):
 
     def serialize(self, request, status, obj,
         content_type=None
-        , headers=None
-        , **opts
+        , opts=None
+        , **headers
     ):
         '''serialize(request, 200, obj) -> response
 
         Serialize an status and object to a response given a request.
         '''
-        headers = headers or {}
+        opts = opts or {}
         content, content_type = self.serializer.serialize(
             obj,
-            request.META.get('HTTP_ACCEPT', content_type),
+            content_type or request.META.get('HTTP_ACCEPT'),
             **opts
         )
 
