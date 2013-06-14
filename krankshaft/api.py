@@ -310,6 +310,12 @@ class API(object):
         '''
         return data
 
+    # TODO patch vary headers...
+    #   - default to "Vary: Accept", depending on authn type, do we change it to
+    #     "Vary: Accept, Cookie" also?
+    # TODO cache control headers...
+    #   - default to "Cache-Control: no-store" and "Pragma: no-cache"?
+    #   - check out tastypie.cache.SimpleCache
     def hook_response(self, response):
         '''hook_response(response) -> response
 
