@@ -45,9 +45,9 @@ class ThrottleRateTest(TestCaseNoDB):
         self.assertEquals(allowed, False)
 
         nreq, nsec = self.throttle.rate
-        self.assertTrue(headers['X-Throttled-For'] in wait)
+        self.assertTrue(headers['Retry-After'] in wait)
 
-        self.throttle.timer = lambda: self.now + headers['X-Throttled-For']
+        self.throttle.timer = lambda: self.now + headers['Retry-After']
         allowed, headers = self.throttle.allow(self.auth)
         self.assertEquals(allowed, True)
         self.assertTrue(not headers)
@@ -79,7 +79,7 @@ class ThrottleRateTest(TestCaseNoDB):
         self.assertEquals(allowed, False)
 
         nreq, nsec = self.throttle.rate
-        self.assertEquals(headers['X-Throttled-For'], wait)
+        self.assertEquals(headers['Retry-After'], wait)
 
         self.throttle.timer = lambda: self.now + wait
         allowed, headers = self.throttle.allow(self.auth)
@@ -96,7 +96,7 @@ class ThrottleRateTest(TestCaseNoDB):
         self.assertEquals(allowed, False)
 
         nreq, nsec = self.throttle.rate
-        self.assertEquals(headers['X-Throttled-For'], wait)
+        self.assertEquals(headers['Retry-After'], wait)
 
         self.throttle.timer = lambda: self.now + wait
         allowed, headers = self.throttle.allow(self.auth, suffix='suffix')

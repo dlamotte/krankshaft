@@ -399,7 +399,7 @@ class APITest(TestCaseNoDB):
         response = self.client.get('/throttle/?key=value')
         self.assertEquals(response.status_code, 429)
         self.assertTrue(not response.content)
-        self.assertEquals(response['X-Throttled-For'], '13')
+        self.assertEquals(response['Retry-After'], '13')
 
     @property
     def urls(self):

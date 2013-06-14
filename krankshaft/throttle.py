@@ -159,7 +159,7 @@ class Throttle(object):
 
             headers = {}
             if wait:
-                headers['X-Throttled-For'] = wait
+                headers['Retry-After'] = wait
             return (False, headers)
 
         else:
