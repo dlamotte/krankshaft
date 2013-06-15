@@ -129,7 +129,7 @@ class AuthnDjangoAPIToken(AuthnDjango):
             return None
 
     def challenge(self, request, response):
-        response['WWW-Authenticate'] = 'APIToken Realm="%s"' % self.realm
+        response['WWW-Authenticate'] = 'APIToken realm="%s"' % self.realm
         return response
 
     def is_valid(self, authned):
@@ -153,7 +153,7 @@ class AuthnDjangoBasic(AuthnDjango):
         )
 
     def challenge(self, request, response):
-        response['WWW-Authenticate'] = 'Basic Realm="%s"' % self.realm
+        response['WWW-Authenticate'] = 'Basic realm="%s"' % self.realm
         return response
 
 class AuthnDjangoMiddleware(AuthnDjango):
