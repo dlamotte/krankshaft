@@ -57,6 +57,14 @@ class API(object):
     Throttle = Throttle
 
     error = 'Internal Server Error'
+    methods = (
+        'get',
+        'head',
+        'options',
+        'post',
+        'put',
+        'delete',
+    )
 
     def __init__(self,
         name=''
@@ -116,6 +124,8 @@ class API(object):
         def decorator(view):
             @functools.wraps(view)
             def call(request, *args, **kwargs):
+                # TODO innards should be self.dispatch(...)
+                # TODO create a subclass on the fly of a class object
                 try:
                     if only:
                         return view(request, *args, **kwargs)
@@ -344,6 +354,29 @@ class API(object):
         response['Content-Type'] += '; charset=utf-8'
         return response
 
+    def make_helper(self, klass):
+        '''make_helper(Klass) -> helper_instance
+
+        This helper makes it possible to decorate a class and have it be
+        connectable to Django.
+        '''
+        # TODO doesnt quite work how it needs to... probably needs to be passed
+        # the 'call' method from the decorator as a callback...
+        api = self
+
+        class Helper(klass):
+            instance = klass()
+            klass = klass
+
+            def __call__(self, request, *args, **kwargs):
+                return api.route(self.instance, request, *args, **kwargs)
+
+        Helper.__module__ = klass.__module__
+        Helper.__name__ = klass.__name__
+        Helper.__doc__ = klass.__doc__
+
+        return Helper()
+
     def redirect(self, request, status, location, **headers):
         '''redirect(request, 302, '/location') -> response
 
@@ -384,6 +417,53 @@ class API(object):
             response.content = content
 
         return self.hook_response(response)
+
+    def route(self, obj, request, *args, **kwargs):
+        '''route(obj, request, *args, **kwargs) -> response
+
+        Route a request to given obj.  If a route method exists on the object,
+        simply forward control to it.  Otherwise, do a simple routing method
+        based on the HTTP method of the request.
+
+        Example:
+
+            @api
+            class SimpleResource(object):
+                def all(self, request, *args, **kwargs):
+                    ...
+
+                def route(self, request, *args, **kwargs):
+                    return self.all(request, *args, **kwargs)
+
+        Example with default routing:
+
+            @api
+            class MethodResource(object):
+                def get(self, request):
+                    ...
+
+                def post(self, request):
+                    ...
+        '''
+        # assume its an instance of a class
+        if hasattr(obj, 'route'):
+            return obj.route(request, *args, **kwargs)
+
+        avail = {
+            method: getattr(obj, method, None)
+            for method in self.methods
+        }
+
+        # assume its a class, route to a specific method
+        method = request.method.lower()
+        view = avail[method]
+
+        if not view:
+            return self.response(request, 405,
+                Allow=', '.join([method.upper() for method in avail.keys()])
+            )
+
+        return view(request, *args, **kwargs)
 
     def serialize(self, request, status, obj,
         content_type=None
