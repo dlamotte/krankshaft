@@ -310,6 +310,13 @@ class API(object):
 
         return opts
 
+    def expect(self, expected, data):
+        '''expect({'key': int}, {'key': 1}) -> ???
+
+        ... TODO
+        '''
+        pass
+
     def extra(self, **more):
         data = {
             'api': self.name,
