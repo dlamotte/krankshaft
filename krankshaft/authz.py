@@ -39,8 +39,9 @@ class AuthzDjango(Authz):
     Options:
         perms: enable model level permission checking (default: True)
     '''
-    def __init__(self, perms=True, **kwargs):
+    def __init__(self, default_if_no_method=False, perms=True, **kwargs):
         super(AuthzDjango, self).__init__(**kwargs)
+        self.default_if_no_method = default_if_no_method
         self.perms = perms
 
     def is_authorized_obj(self, request, authned, obj):
@@ -71,7 +72,7 @@ class AuthzDjango(Authz):
 
         obj_authz = getattr(obj, 'is_authorized', None)
         if not obj_authz:
-            return True
+            return self.default_if_no_method
 
         return obj_authz(request, authned)
 
