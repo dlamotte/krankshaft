@@ -106,7 +106,7 @@ class AuthnDjangoAPIToken(AuthnDjango):
 
     def __init__(self, model, **kwargs):
         super(AuthnDjangoAPIToken, self).__init__(**kwargs)
-        self.model = self.model
+        self.model = model
 
     def authenticate(self, request):
         try:
