@@ -7,6 +7,9 @@ import json
 import mimeparse
 import urlparse
 
+# TODO: Accept: */* dumps: no method to_urlencoded
+#       maybe only consider serializers we have a method for?
+
 class Serializer(object):
     '''
     Create a serializer to register serializable's against.  Understands how to
@@ -189,6 +192,13 @@ class Serializer(object):
         accept = accept or self.default_content_type
         content_type, format = self.get_format(accept)
         method = getattr(self, 'to_%s' % format)
+
+        # ugly hack to get the params to the header part out
+        accept = [
+            part
+            for part in accept.split(',')
+            if part.startswith(content_type)
+        ][0]
 
         params = mimeparse.parse_mime_type(accept)[2]
         for key, value in params.items():
