@@ -7,6 +7,10 @@ class APITokenBase(models.Model):
     Example:
 
         class APIToken(APITokenBase):
+            # required attributes
+            #   - id (uniquely identifying the credential used)
+            #   - user (either a user field or property returning the user)
+
             user = models.ForeignKey('auth.User')
             token = models.TextField()
 
