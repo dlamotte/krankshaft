@@ -1,4 +1,5 @@
 from .exceptions import KrankshaftError
+from collections import namedtuple
 from cStringIO import StringIO
 from datetime import datetime, date, time, timedelta
 from functools import partial
@@ -17,6 +18,9 @@ class Serializer(object):
     '''
     class SerializableExists(KrankshaftError): pass
     class Unsupported(KrankshaftError): pass
+
+    SerializedContainer = \
+        namedtuple('SerializedContainer', ['data', 'content_type'])
 
     content_types = {
         'application/json': 'json',
@@ -204,7 +208,7 @@ class Serializer(object):
         for key, value in params.items():
             opts.setdefault(key, value)
 
-        return (method(obj, **opts), content_type)
+        return self.SerializedContainer(method(obj, **opts), content_type)
 
     def to_json(self, obj, **opts):
         convert = self.convert
