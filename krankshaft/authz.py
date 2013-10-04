@@ -67,7 +67,7 @@ class AuthzDjango(Authz):
 
             # allow read methods through but verify authenticated has permission
             # to perform the given action on the object
-            if perm and not authned.has_perm(perm):
+            if perm and not authned.user.has_perm(perm):
                 return False
 
         obj_authz = getattr(obj, 'is_authorized', None)

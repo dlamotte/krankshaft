@@ -87,7 +87,7 @@ class AuthnDjango(Authn):
         return Site.objects.get_current().name
 
     def is_valid(self, authned):
-        return authned.is_active
+        return authned.user.is_active
 
     @property
     def secret(self):
@@ -178,3 +178,36 @@ class AuthnDjangoMiddleware(AuthnDjango):
             return None
 
         return user
+
+class AuthnedInterface(object):
+    '''
+    Proxy to an authned object to give a common interface to objects returned
+    from Authn.authenticate() or any of its subclasses.
+    '''
+    def __init__(self, authned):
+        self.authned = authned
+
+    @property
+    def id(self):
+        return self.authned.id
+
+    def is_valid(self):
+        is_valid = None
+
+        if hasattr(self.authned, 'is_valid'):
+            is_valid = self.authned.is_valid
+
+        if is_valid and hasattr(is_valid, '__call__'):
+            return is_valid()
+
+        return bool(is_valid)
+
+    @property
+    def name(self):
+        return self.authned.__class__.__name__
+
+    @property
+    def user(self):
+        if hasattr(self.authned, 'user'):
+            return self.authned.user
+        return self.authned # assume we're an interface to a user

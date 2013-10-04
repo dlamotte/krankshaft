@@ -25,6 +25,8 @@ class Auth(object):
     As an option, you can set 'authn' to a list/tuple of Authn's.  When
     initialized, it will decide which Authn to use and bind it permanently.
     '''
+    AuthnedInterface = authn.AuthnedInterface
+
     authn = authn.AuthnDjangoBasic()
     authz = authz.AuthzReadonly()
 
@@ -53,7 +55,7 @@ class Auth(object):
 
         authned = self.authn.authenticate(self.request)
         if authned and self.authn.is_valid(authned):
-            self.authned = authned
+            self.authned = self.AuthnedInterface(authned)
             return self.authned
         return None
 
@@ -74,7 +76,7 @@ class Auth(object):
         '''
         if self.authned:
             return '%s-%s' % (
-                self.authned.__class__.__name__,
+                self.authned.name,
                 self.authned.id
             )
 
@@ -113,3 +115,9 @@ class Auth(object):
         requester.
         '''
         return self.authz.limit(self.request, self.authned, query)
+
+    @property
+    def user(self):
+        if self.authned:
+            return self.authned.user
+        return None
