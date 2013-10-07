@@ -58,7 +58,14 @@ class Authn(object):
             return None
 
         expect = self.expect
-        if expect and method.lower() != expect:
+        if not expect:
+            return credentials
+
+        if isinstance(expect, (tuple, list)):
+            if method.lower() not in expect:
+                return None
+
+        elif method.lower() != expect:
             return None
 
         return credentials
@@ -102,7 +109,7 @@ class AuthnDjangoAPIToken(AuthnDjango):
     to make it possible to have credentials for a user separate from the
     password that are easily invalidated in one way or another.
     '''
-    expect = 'apitoken'
+    expect = ('apitoken', 'apikey')
 
     def __init__(self, model, **kwargs):
         super(AuthnDjangoAPIToken, self).__init__(**kwargs)
