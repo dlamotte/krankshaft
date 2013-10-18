@@ -235,10 +235,7 @@ class API(object):
 
             if not isinstance(data, MultiValueDict):
                 # fake out returned value to ensure same interface
-                data = MultiValueDict({
-                    key: [value]
-                    for key, value in data.iteritems()
-                })
+                data = MultiValueDict(data)
 
             return (query, data)
         except ValueError:
