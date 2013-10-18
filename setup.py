@@ -12,14 +12,7 @@ install_requires = [
     'mimeparse==0.1.3',
 ]
 
-tests_requires = [
-    'Django==1.4.3',
-    'dj-database-url==0.2.1',
-    'django-nose==1.1',
-    'psycopg2==2.5',
-    'nose-cov==1.6',
-    'pytz==2013b',
-]
+tests_requires = open('requirements.txt').read().splitlines()
 
 long_description = ''
 try:
