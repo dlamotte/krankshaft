@@ -236,7 +236,7 @@ class API(object):
             if not isinstance(data, MultiValueDict):
                 # fake out returned value to ensure same interface
                 data = MultiValueDict({
-                    key: [value]
+                    key: value if isinstance(value, (tuple, list)) else [value]
                     for key, value in data.iteritems()
                 })
 
