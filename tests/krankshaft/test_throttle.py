@@ -23,7 +23,7 @@ class ThrottleBaseTest(TestCaseNoDB):
 class ThrottleRateTest(TestCaseNoDB):
     def setUp(self):
         self.auth = Auth(self.make_request())
-        self.auth.authned = FakeUser()
+        self.auth.authned = self.auth.AuthnedInterface(FakeUser())
 
         self.cache = cache
         self.throttle = Throttle(
