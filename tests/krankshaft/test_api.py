@@ -74,6 +74,16 @@ class APITest(TestCaseNoDB):
             Header=''
         )
 
+    def test_annotate(self):
+        def fakeview(request):
+            return hasattr(request, 'auth')
+        fakeview = self.api(fakeview)
+
+        request = self.make_request()
+        self.assertEqual(hasattr(request, 'auth'), False)
+        self.assertEqual(fakeview(request), True)
+        self.assertEqual(hasattr(request, 'auth'), False)
+
     def test_auth_deny(self):
         response = self.client.get('/deny/?key=value')
         self.assertEquals(response.status_code, 401)

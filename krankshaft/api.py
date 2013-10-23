@@ -13,6 +13,7 @@ from .auth import Auth
 from .exceptions import Abort, KrankshaftError
 from .serializer import Serializer
 from .throttle import Throttle
+from .util import Annotate
 import functools
 import logging
 import sys
@@ -141,7 +142,12 @@ class API(object):
                         if not allowed:
                             return self.response(request, 429, **headers)
 
-                    return view(request, *args, **kwargs)
+                    with Annotate(request, {
+                        'auth': _auth,
+                        'throttle': _throttle,
+                    }):
+                        return view(request, *args, **kwargs)
+
                 except Exception:
                     return self.handle_exc(request, error=error)
 
