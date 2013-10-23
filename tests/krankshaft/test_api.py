@@ -76,7 +76,9 @@ class APITest(TestCaseNoDB):
 
     def test_annotate(self):
         def fakeview(request):
-            return hasattr(request, 'auth')
+            return \
+                hasattr(request, 'auth') \
+                and isinstance(request.auth, self.api.Auth)
         fakeview = self.api(fakeview)
 
         request = self.make_request()
