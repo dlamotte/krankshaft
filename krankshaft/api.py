@@ -128,7 +128,7 @@ class API(object):
                     if auth:
                         _auth.authenticate()
                         if not _auth:
-                            return _auth.challenge(self.response(request, 401))
+                            return self.challenge(request, _auth)
 
                     Throttle = self.Throttle
                     if throttle not in (True, False):
@@ -207,6 +207,9 @@ class API(object):
         auth = Auth(request)
         auth.authenticate()
         return auth
+
+    def challenge(self, request, auth, status=401):
+        return auth.challenge(self.response(request, status))
 
     def deserialize(self, request, abortable=True):
         '''deserialize(request) -> query, body
