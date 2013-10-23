@@ -16,7 +16,7 @@ import sys
 
 class Auth(AuthBase):
     authn = Authn()
-    authz = Authz()
+    authz = Authz(require_authned=False)
 
 class API(APIBase):
     Auth = Auth

@@ -15,7 +15,7 @@ class Authz(object):
     methods_update = ('put', )
     methods_delete = ('delete', )
 
-    def __init__(self, require_authned=False):
+    def __init__(self, require_authned=True):
         self.require_authned = require_authned
 
     def is_authorized_obj(self, request, authned, obj):
