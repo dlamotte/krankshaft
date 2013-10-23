@@ -76,6 +76,18 @@ class AuthzDjango(Authz):
 
         return obj_authz(request, authned)
 
+class AuthzDjangoAnonRead(AuthzDjango):
+    '''
+    Like AuthzDjango, but explicitly allows read requests through without
+    authentication.
+    '''
+    def is_authorized_request(self, request, authned):
+        if authned:
+            return True
+
+        else:
+            return request.method.lower() in self.methods_read
+
 class AuthzReadonly(Authz):
     '''
     Read only authorization.  Only HTTP methods considered to be read-only
