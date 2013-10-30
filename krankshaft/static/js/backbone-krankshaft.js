@@ -37,8 +37,8 @@
     }
   };
 
-  bb.ks_old_sync = bb.sync;
-  bb.sync = function(method, model, opts) {
+  bb.sync_ks_old = bb.sync;
+  bb.sync_ks = bb.sync = function(method, model, opts) {
     opts = bb.ks.authn_update(opts);
 
     return bb.ks_old_sync(method, model, opts);
