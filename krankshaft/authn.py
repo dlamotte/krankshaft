@@ -1,5 +1,7 @@
 # TODO OAuth1/2
 
+# TODO Convert "expect" to "method"
+
 import logging
 
 log = logging.getLogger(__name__)
