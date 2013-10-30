@@ -11,36 +11,40 @@
 
   bb.ks = {
     authn: {
+      header: 'Authorization',
+      method: 'APIToken',
+      method_value: function(method, username, secret) {
+        return method + ' ' + username + ':' + secret;
+      },
       secret: '',
+      update: function(opts) {
+        var authn = _.defaults({}, bb.ks.authn, opts.authn);
+
+        if (authn.username && authn.secret) {
+          var headers = {};
+          headers[authn.header] = authn.method_value(
+            authn.method,
+            authn.username,
+            authn.secret
+          );
+
+          opts.headers = _.extend(headers, opts.headers);
+        }
+
+        return opts;
+      },
       username: ''
-    },
-    authn_header: 'Authorization',
-    authn_method: 'APIToken',
-    authn_method_value: function(method, username, secret) {
-      return method + ' ' + username + ':' + secret;
-    },
-    authn_update: function(opts) {
-      var authn = _.defaults({}, bb.ks.authn, opts.authn);
-
-      if (authn.username && authn.secret) {
-        var headers = {};
-        headers[bb.ks.authn_header] = bb.ks.authn_method_value(
-          bb.ks.authn_method,
-          authn.username,
-          authn.secret
-        );
-
-        opts.headers = _.extend(headers, opts.headers);
-      }
-
-      return opts;
     }
   };
 
   bb.sync_ks_old = bb.sync;
   bb.sync_ks = bb.sync = function(method, model, opts) {
-    opts = bb.ks.authn_update(opts);
+    var update = bb.ks.authn.update;
 
-    return bb.ks_old_sync(method, model, opts);
+    if (opts.authn && opts.authn.update) {
+      update = opts.authn.update;
+    }
+
+    return bb.ks_old_sync(method, model, update(opts));
   };
 }(jQuery, Backbone, _));
