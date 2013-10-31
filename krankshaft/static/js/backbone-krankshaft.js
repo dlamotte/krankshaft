@@ -41,6 +41,14 @@
               .set([inst], {remove: false});
       },
       cached: [],
+      clear: function(model) {
+        if (model) {
+          bb.ks.cache.get_or_create_collection(model).reset();
+        }
+        else {
+          bb.ks.cached = [];
+        }
+      },
       get: function(model, id) {
         return
           bb.ks.get_or_create_collection(model)
