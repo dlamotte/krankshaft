@@ -86,8 +86,6 @@ class API(object):
 
         self.serializer = self.Serializer()
 
-    # TODO if auth is done, how does view figure out where the 'auth' object is?
-    #      ie: who is the requested authned for?
     def __call__(self,
         f=None,
         auth=True,
