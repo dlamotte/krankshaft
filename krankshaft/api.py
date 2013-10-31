@@ -364,7 +364,7 @@ class API(object):
         # the 'call' method from the decorator as a callback...
         api = self
 
-        class Helper(klass):
+        class Helper(object):
             instance = klass()
             klass = klass
 
