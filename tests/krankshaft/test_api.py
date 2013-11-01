@@ -237,6 +237,19 @@ class APITest(TestCaseNoDB):
             {'key': 'value', 'invalid': ''}
         )
 
+    def test_dispatch_opts_empty(self):
+        self.assertEqual(self.api.dispatch_opts({}), self.api.dispatch_opts_defaults)
+
+    def test_dispatch_opts_none(self):
+        self.assertEqual(self.api.dispatch_opts(None), self.api.dispatch_opts_defaults)
+
+    def test_dispatch_opts_badopt(self):
+        self.assertRaises(
+            self.api.InvalidDispatchOptions,
+            self.api.dispatch_opts,
+            {'__badopt': True}
+        )
+
     def test_handle_exc_abort(self):
         request = self.make_request()
         try:
@@ -450,3 +463,72 @@ class APITest(TestCaseNoDB):
         query.update(data)
 
         return self.api.serialize(request, 200, query)
+
+
+class APIResourceTest(TestCaseNoDB):
+    def _pre_setup(self):
+        self.api = API('v1')
+        super(APIResourceTest, self)._pre_setup()
+
+    def test_resource_no_methods(self):
+        for method in [
+            getattr(self.client, name)
+            for name in self.api.methods
+        ]:
+            response = method('/resource/nomethods/')
+            self.assertEqual(response.status_code, 405)
+            self.assertEqual(response['Allow'], '')
+
+    def test_resource_get_only(self):
+        response = self.client.post('/resource/get-only/')
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response['Allow'], 'GET')
+
+    def test_resource_simple_get(self):
+        response = self.client.get('/resource/simple/1/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, '1')
+
+    def test_resource_simple_post(self):
+        response = self.client.post('/resource/simple/1/')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.content, '10')
+
+    def test_response_with_router(self):
+        response = self.client.get('/resource/with-router/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, 'response')
+
+    @property
+    def urls(self):
+        from django.conf.urls import url
+
+        api = self.api
+
+        class ResourceNoMethods(object):
+            pass
+
+        class ResourceGetOnly(object):
+            def get(self):
+                pass
+
+        class ResourceSimple(object):
+            def get(self, request, id):
+                return api.response(request, 200, str(id))
+
+            def post(self, request, id):
+                return api.response(request, 201, str(int(id) * 10))
+
+        class ResourceWithRouter(object):
+            def route(self, request, *args, **kwargs):
+                return self.response(request, *args, **kwargs)
+
+            def response(self, request, *args, **kwargs):
+                return api.response(request, 200, 'response')
+
+        return self.make_urlconf(
+            url('^resource/nomethods/$', api(ResourceNoMethods)),
+            url('^resource/get-only/$', api(ResourceGetOnly)),
+            url('^resource/simple/(?P<id>\d+)/$', api(ResourceSimple)),
+            url('^resource/with-router/$', api(ResourceWithRouter)),
+        )

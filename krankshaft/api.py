@@ -10,11 +10,12 @@
 
 from . import util
 from .auth import Auth
-from .exceptions import Abort, KrankshaftError
+from .exceptions import Abort, InvalidDispatchOptions, KrankshaftError
 from .serializer import Serializer
 from .throttle import Throttle
 from .util import Annotate
 import functools
+import inspect
 import logging
 import sys
 import traceback
@@ -53,8 +54,17 @@ class API(object):
 
     Abort = Abort
     Auth = Auth
+    InvalidDispatchOptions = InvalidDispatchOptions
     Serializer = Serializer
     Throttle = Throttle
+
+    dispatch_opts_defaults = {
+        'auth': True,
+        'error': None,
+        'only': False,
+        'throttle': True,
+        'throttle_suffix': None,
+    }
 
     error = 'Internal Server Error'
     methods = (
@@ -86,14 +96,7 @@ class API(object):
 
         self.serializer = self.Serializer()
 
-    def __call__(self,
-        f=None,
-        auth=True,
-        error=None,
-        only=False,
-        throttle=True,
-        throttle_suffix=None
-    ):
+    def __call__(self, view_or_resource=None, **opts):
         '''To be used as a decorator.
 
         Only pass keyword arguments to this function.
@@ -108,69 +111,37 @@ class API(object):
         def view(request):
             ...
 
-        Options:
-            auth: only authed requests get through (default: True)
-                optionally pass in Auth subclass
-            error: message to use in case of unhandled exception
-            only: only wrap the method to provide
-                .abort()/unhandled-exception support
-            throttle: rate-limit clients (default: True)
-                optionally pass in Throttle subclass
-            throttle_suffix: suffix the throttle key
-                throttle the view seperately
+        See dispatch_opts() for available options.
         '''
-        def decorator(view):
-            @functools.wraps(view)
-            def call(request, *args, **kwargs):
-                # TODO innards should be self.dispatch(...)
-                # TODO create a subclass on the fly of a class object
-                try:
-                    if only:
-                        return view(request, *args, **kwargs)
+        self.dispatch_opts(opts)
 
-                    Auth = self.Auth
-                    if auth not in (True, False):
-                        Auth = auth
+        def decorator(view_or_resource):
+            if inspect.isclass(view_or_resource):
+                view = self.make_resource_helper(view_or_resource, opts)
 
-                    _auth = Auth(request)
-                    if auth:
-                        _auth.authenticate()
-                        if not _auth:
-                            return self.challenge(request, _auth)
+            else:
+                @functools.wraps(view_or_resource)
+                def view(request, *args, **kwargs):
+                    return self.dispatch(
+                        view_or_resource,
+                        opts,
+                        request,
+                        *args,
+                        **kwargs
+                    )
 
-                    Throttle = self.Throttle
-                    if throttle not in (True, False):
-                        Throttle = throttle
+            return self.update_view(view)
 
-                    _throttle = Throttle()
-                    if throttle:
-                        allowed, headers = _throttle.allow(_auth,
-                            suffix=throttle_suffix
-                        )
-                        if not allowed:
-                            return self.response(request, 429, **headers)
-
-                    with Annotate(request, {
-                        'auth': _auth,
-                        'throttle': _throttle,
-                    }):
-                        return view(request, *args, **kwargs)
-
-                except Exception:
-                    return self.handle_exc(request, error=error)
-
-            return self.update_view(call)
-
-        if f:
+        if view_or_resource:
             # used as a decorator
             # @api
-            # def view(...):
-            return decorator(f)
+            # class/def ...
+            return decorator(view_or_resource)
 
         else:
             # passing params, return will be used as a decorator
             # @api(param=val)
-            # def view(...):
+            # class/def ...
             return decorator
 
     def abort(self, request, status_or_response, **headers):
@@ -270,6 +241,85 @@ class API(object):
             else:
                 raise
 
+    def dispatch(self, view, opts, request, *args, **kwargs):
+        '''dispatch(view, None, request, *args, **kwargs) -> response
+
+        Dispatch a view function wrapping it in exception handling (support
+        for api.abort()) as well as handle authenticating, throttling, ... as
+        defined by opts.
+        '''
+        opts = self.dispatch_opts(opts)
+
+        try:
+            if opts['only']:
+                return view(request, *args, **kwargs)
+
+            auth = self.Auth if opts['auth'] is True else opts['auth']
+            throttle = None
+            if auth:
+                auth = auth(request)
+                auth.authenticate()
+
+                if not auth:
+                    return self.challenge(request, auth)
+
+                throttle = \
+                    self.Throttle \
+                    if opts['throttle'] is True \
+                    else opts['throttle']
+
+                if throttle:
+                    throttle = throttle(request, auth)
+                    allowed, headers = \
+                        throttle.allow(suffix=opts['throttle_suffix'])
+
+                    if not allowed:
+                        return self.throttled(request, **headers)
+
+            with Annotate(request, {
+                'auth': auth,
+                'throttle': throttle,
+            }):
+                return view(request, *args, **kwargs)
+
+        except Exception:
+            return self.handle_exc(request, error=opts['error'])
+
+    def dispatch_opts(self, opts):
+        '''dispatch_opts({'auth': True}) -> {'auth': True, ... defaults}
+
+        Use validate=True to only do validation on the options and not update
+        them with the defaults.
+
+        Options:
+            auth: only authed requests get through (default: True)
+                optionally pass in Auth subclass
+            error: message to use in case of unhandled exception
+            only: only wrap the method to provide
+                .abort()/unhandled-exception support
+            throttle: rate-limit clients (default: True)
+                optionally pass in Throttle subclass, depends on auth
+            throttle_suffix: suffix the throttle key
+                throttle the view seperately
+        '''
+        defaults = self.dispatch_opts_defaults
+        opts = opts.copy() if opts else {}
+
+        invalid = []
+        for name in opts.iterkeys():
+            if name not in defaults:
+                invalid.append(name)
+
+        if invalid:
+            raise self.InvalidDispatchOptions(
+                'You passed invalid dispatch options: %s' % ', '.join(invalid)
+            )
+
+        for name, value in defaults.iteritems():
+            opts.setdefault(name, value)
+
+        return opts
+
     def extra(self, **more):
         data = {
             'api': self.name,
@@ -352,26 +402,26 @@ class API(object):
         response['Content-Type'] += '; charset=utf-8'
         return response
 
-    def make_helper(self, klass):
-        '''make_helper(Klass) -> helper_instance
+    def make_resource_helper(self, klass_to_wrap, opts):
+        '''make_resource_helper(klass) -> helper_instance
 
         This helper makes it possible to decorate a class and have it be
         connectable to Django.
         '''
-        # TODO doesnt quite work how it needs to... probably needs to be passed
-        # the 'call' method from the decorator as a callback...
         api = self
 
         class Helper(object):
-            instance = klass()
-            klass = klass
+            __doc__ = klass_to_wrap.__doc__
+            instance = klass_to_wrap()
+            klass = klass_to_wrap
 
             def __call__(self, request, *args, **kwargs):
-                return api.route(self.instance, request, *args, **kwargs)
+                view = lambda *args, **kwargs: \
+                    api.route(self.instance, *args, **kwargs)
+                return api.dispatch(view, opts, request, *args, **kwargs)
 
-        Helper.__module__ = klass.__module__
-        Helper.__name__ = klass.__name__
-        Helper.__doc__ = klass.__doc__
+        Helper.__module__ = klass_to_wrap.__module__
+        Helper.__name__ = klass_to_wrap.__name__
 
         return Helper()
 
@@ -458,7 +508,11 @@ class API(object):
 
         if not view:
             return self.response(request, 405,
-                Allow=', '.join([method.upper() for method in avail.keys()])
+                Allow=', '.join([
+                    method.upper()
+                    for method, view in avail.iteritems()
+                    if view
+                ])
             )
 
         return view(request, *args, **kwargs)
@@ -483,11 +537,18 @@ class API(object):
 
         return self.response(request, status, content, **headers)
 
+    def throttled(self, request, code=429, **headers):
+        return self.response(request, code, **headers)
+
     def update_view(self, view):
         '''update_view(view) -> view
 
         Hook to make updates to a view.
+
+        In this context, a view can be a class or a function.  In the class
+        case, its considered a resource.
         '''
-        from django.views.decorators.csrf import csrf_exempt
-        view = csrf_exempt(view)
+        # Django's way of marking a view csrf_exempt
+        view.csrf_exempt = True
+
         return view

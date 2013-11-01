@@ -46,14 +46,18 @@ class Throttle(object):
     timer = time.time
 
     def __init__(self,
+        request,
+        auth,
         anon_bucket=None,
         anon_rate=None,
         bucket=None,
         cache=None,
         rate=None,
     ):
+        self.auth = auth
         self.cache = cache or self.default_cache
         self.rate = rate or self.rate
+        self.request = request
 
         self.bucket, self.rate = \
             self.make_bucket_rate(bucket, self.bucket_ratio, self.rate)
@@ -69,15 +73,15 @@ class Throttle(object):
             anon_requests_ratio
         )
 
-    def allow(self, auth, suffix=None):
-        '''allow(auth) -> (bool, headers)
+    def allow(self, suffix=None):
+        '''allow() -> (bool, headers)
 
         Test if a request from a authenticated client is throttled.
 
         The headers returned should be added to the response when the request
         is not allowed.
         '''
-        if auth.authned:
+        if self.auth.authned:
             bsize = self.bucket
             rate = self.rate
         else:
@@ -88,7 +92,7 @@ class Throttle(object):
             return (True, {})
 
         now = int(self.timer())
-        key = self.key(auth, suffix)
+        key = self.key(suffix)
         nreq, nsec = rate
 
         current = now - (now % bsize)
@@ -192,16 +196,16 @@ class Throttle(object):
 
         return bucket, rate
 
-    def key(self, auth, suffix=None):
-        '''key(auth) -> key
+    def key(self, suffix=None):
+        '''key() -> key
 
         Construct a key for the authenticated client.
         '''
-        return self.format % self.key_values(auth, suffix)
+        return self.format % self.key_values(suffix)
 
-    def key_values(self, auth, suffix):
+    def key_values(self, suffix):
         return {
-            'id': auth.id,
+            'id': self.auth.id,
             'suffix': (suffix and ('_' + suffix) or ''),
         }
 

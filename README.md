@@ -1,7 +1,11 @@
 krankshaft
 ==========
 
-A Web API Framework (with Django, ...).
+A Web API Framework.
+
+Currently only supports Django, but designed to work for
+other frameworks with some modification.  At some point, other framework support
+will be built in directly.
 
 [![Build Status](https://secure.travis-ci.org/dlamotte/krankshaft.png)](http://travis-ci.org/dlamotte/krankshaft)
 [![pypi version](https://pypip.in/v/krankshaft/badge.png)](https://pypi.python.org/pypi/krankshaft)
@@ -29,6 +33,7 @@ Goals:
 * no global state
 * easily extendable
 * suggests a pattern, but doesnt restrict you to it
+* secure by default
 
 example
 =======
