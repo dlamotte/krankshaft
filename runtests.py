@@ -15,8 +15,10 @@ settings.INSTALLED_APPS = tuple(settings.INSTALLED_APPS) + (
     'tests',
 )
 
-if __name__ == '__main__':
-    args = sys.argv[1:]
+def runtests(args=None):
     if not args:
         args = ['--cov=krankshaft', '--tb=line', 'tests']
     sys.exit(pytest.main(args=args))
+
+if __name__ == '__main__':
+    runtests(sys.argv[1:])
