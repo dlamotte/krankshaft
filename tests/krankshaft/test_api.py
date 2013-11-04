@@ -470,6 +470,22 @@ class APIResourceTest(TestCaseNoDB):
         self.api = API('v1')
         super(APIResourceTest, self)._pre_setup()
 
+    def test_ensure_failure_to_assign_url_with_resource_with_urls(self):
+        api = API('v1')
+
+        class Resource(object):
+            def router(self):
+                pass
+
+            @property
+            def urls(self):
+                from django.conf.urls import patterns
+                return patterns('',
+                    (r'^resource/other/$', api.wrap(self.router)),
+                )
+
+        self.assertRaises(api.Error, api, Resource, url=r'^resource/$')
+
     def test_resource_no_methods(self):
         for method in [
             getattr(self.client, name)
@@ -499,9 +515,24 @@ class APIResourceTest(TestCaseNoDB):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, 'response')
 
+    def test_response_with_urls(self):
+        response = self.client.get('/api/v1/resource/with-urls/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, 'with-urls')
+
+    def test_view_with_url(self):
+        response = self.client.get('/api/v1/view/with-url/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, 'view-with-url')
+
+    def test_view_with_url_id(self):
+        response = self.client.get('/api/v1/view/with-url/1/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, 'view-with-url-1-option')
+
     @property
     def urls(self):
-        from django.conf.urls import url
+        from django.conf.urls import include, url
 
         api = self.api
 
@@ -526,9 +557,30 @@ class APIResourceTest(TestCaseNoDB):
             def response(self, request, *args, **kwargs):
                 return api.response(request, 200, 'response')
 
+        @api
+        class ResourceWithURLs(object):
+            def router(self, request, *args, **kwargs):
+                return api.response(request, 200, 'with-urls')
+
+            @property
+            def urls(self):
+                from django.conf.urls import patterns
+                return patterns('',
+                    (r'^resource/with-urls/$', api.wrap(self.router)),
+                )
+
+        @api(url='^view/with-url/$')
+        def view_with_url(request):
+            return api.response(request, 200, 'view-with-url')
+
+        @api(url=('^view/with-url/(?P<id>\d+)/$', {'extra': 'option'}))
+        def view_with_url(request, id, extra=None):
+            return api.response(request, 200, 'view-with-url-%s-%s' % (id, extra))
+
         return self.make_urlconf(
             url('^resource/nomethods/$', api(ResourceNoMethods)),
             url('^resource/get-only/$', api(ResourceGetOnly)),
             url('^resource/simple/(?P<id>\d+)/$', api(ResourceSimple)),
             url('^resource/with-router/$', api(ResourceWithRouter)),
+            url('^api/', include(api.urls)),
         )

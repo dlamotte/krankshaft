@@ -54,6 +54,7 @@ class API(object):
 
     Abort = Abort
     Auth = Auth
+    Error = KrankshaftError
     InvalidDispatchOptions = InvalidDispatchOptions
     Serializer = Serializer
     Throttle = Throttle
@@ -91,58 +92,47 @@ class API(object):
             API(error='Error, see http://host.com/in-case-of-error/')
         '''
         self.debug = debug
-        self.name = name
         self.error = error or self.error
+        self.name = name
+        self.registry = []
 
         self.serializer = self.Serializer()
 
-    def __call__(self, view_or_resource=None, **opts):
+    def __call__(self, view_or_resource=None, register=True, url=None, **opts):
         '''To be used as a decorator.
 
-        Only pass keyword arguments to this function.
-
-        @api
-        def view(request):
-            pass
+            @api
+            def view(request):
+                pass
 
         Or
 
-        @api(option=value)
-        def view(request):
-            ...
+            @api(option=value)
+            def view(request):
+                ...
 
-        See dispatch_opts() for available options.
+        Or
+
+            @api
+            class MyResource(object):
+                ...
+
+        Or
+
+            @api(option=value)
+            class MyResource(object):
+                ...
+
+        For options, see wrap().  Only difference is register is default True.
+
+        Do not use for creating resource urls.  Instead use wrap().
         '''
-        self.dispatch_opts(opts)
-
-        def decorator(view_or_resource):
-            if inspect.isclass(view_or_resource):
-                view = self.make_resource_helper(view_or_resource, opts)
-
-            else:
-                @functools.wraps(view_or_resource)
-                def view(request, *args, **kwargs):
-                    return self.dispatch(
-                        view_or_resource,
-                        opts,
-                        request,
-                        *args,
-                        **kwargs
-                    )
-
-            return self.update_view(view)
-
-        if view_or_resource:
-            # used as a decorator
-            # @api
-            # class/def ...
-            return decorator(view_or_resource)
-
-        else:
-            # passing params, return will be used as a decorator
-            # @api(param=val)
-            # class/def ...
-            return decorator
+        return self.wrap(
+            view_or_resource,
+            register=register,
+            url=url,
+            **opts
+        )
 
     def abort(self, request, status_or_response, **headers):
         '''abort(request, 400)
@@ -420,8 +410,11 @@ class API(object):
                     api.route(self.instance, *args, **kwargs)
                 return api.dispatch(view, opts, request, *args, **kwargs)
 
+            def __getattr__(self, name):
+                return getattr(self.instance, name)
+
         Helper.__module__ = klass_to_wrap.__module__
-        Helper.__name__ = klass_to_wrap.__name__
+        Helper.__name__ = 'Helper.' + klass_to_wrap.__name__
 
         return Helper()
 
@@ -431,6 +424,30 @@ class API(object):
         Create a redirect response.
         '''
         return self.response(request, status, Location=location, **headers)
+
+    def register(self, view, url=None):
+        '''register(myview)
+
+        Register the view with the API.
+
+        url can be just a regex or a tuple/list of (regex, kwargs, name,
+        prefix). It is essentially the same calling convention as
+        django.conf.urls.url but minus the view parameter.
+        '''
+        if url:
+            if not isinstance(url, basestring) \
+               and not (isinstance(url, (list, tuple)) and 1 <= len(url) <= 4):
+                raise KrankshaftError(
+                    'register called with invalid url param: %r' % (url, )
+                )
+
+            if hasattr(view, 'urls'):
+                raise KrankshaftError(
+                    'Will not register a resource to a url '
+                    'if it has an urls attribute'
+                )
+
+        self.registry.append((view, url))
 
     def response(self, request, status, content=None, **headers):
         '''response(request, 200) -> response
@@ -552,3 +569,100 @@ class API(object):
         view.csrf_exempt = True
 
         return view
+
+    @property
+    def urls(self):
+        '''
+        Returns the list of registered endpoints.
+
+        For example, in your urls.py:
+
+            url('^api/', include(api.urls))
+
+        '''
+        urlpatterns = []
+        for view, url in self.registry:
+            if url:
+                urlitem = (url, view)
+                if not isinstance(url, basestring):
+                    urlitem = (url[0], view) + url[1:]
+
+                urlpatterns.append(urlitem)
+
+            extraurls = getattr(view, 'urls', None)
+            if extraurls:
+                urlpatterns.extend(extraurls)
+
+
+        from django.conf.urls import include, patterns, url
+
+        urlpatterns = patterns('', *urlpatterns)
+        if self.name:
+            urlpatterns = patterns('',
+                url(r'^%s/' % self.name, include(urlpatterns)),
+            )
+
+        return urlpatterns
+
+    def wrap(self, view_or_resource=None, register=False, url=None, **opts):
+        '''wrap(myview) -> wrapped_view
+
+        Wrap up a view function in an API container.
+
+        Ideally used when setting up the urls property for resources.  ie:
+
+            @propery
+            def urls(self):
+                return [
+                    (r'^path/$', api.wrap(self.route_list)),
+                    (r'^path/(?P<id>\d+)/$', api.wrap(self.route_object)),
+                ]
+
+        However, it has the same semantics as the decorator way to wrap a view.
+        Except that this function defaults register to False (vs True for the
+        api decorator).  So to wrap a view that you dont want to register:
+
+            @api.wrap
+            def myview(request):
+                ...
+
+        Options:
+
+            register    whether or not to register the view (default: False)
+            url         passed directly to register()
+
+        See dispatch_opts() for more available options.
+        '''
+        self.dispatch_opts(opts)
+
+        def decorator(view_or_resource):
+            if inspect.isclass(view_or_resource):
+                view = self.make_resource_helper(view_or_resource, opts)
+
+            else:
+                @functools.wraps(view_or_resource)
+                def view(request, *args, **kwargs):
+                    return self.dispatch(
+                        view_or_resource,
+                        opts,
+                        request,
+                        *args,
+                        **kwargs
+                    )
+
+            view = self.update_view(view)
+            if register:
+                self.register(view, url=url)
+            return view
+
+        if view_or_resource:
+            # used as a decorator
+            # @api
+            # class/def ...
+            return decorator(view_or_resource)
+
+        else:
+            # passing params, return will be used as a decorator
+            # @api(param=val)
+            # class/def ...
+            return decorator

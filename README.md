@@ -103,13 +103,13 @@ what works
   respecting HTTP Accept Header
 * abort (raise-like http response return)
 * throttling
+* resource routing
 
 TODO
 ====
 
 * auto-documenting based on doc strings (plus bootstrap interactive UI)
 * caching
-* class/resource-like routing (similar to Django Tastypie and Piston)
 * easy-etag support
 * flask support
 * model serialization (but first, some helpers)
