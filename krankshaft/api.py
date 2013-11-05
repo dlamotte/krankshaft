@@ -10,10 +10,12 @@
 
 from . import util
 from .auth import Auth
-from .exceptions import Abort, DispatchInvalidOptions, KrankshaftError
+from .exceptions import \
+    Abort, DispatchInvalidOptions, KrankshaftError, ValueIssue
 from .serializer import Serializer
 from .throttle import Throttle
 from .util import Annotate
+from .valid import Expecter
 import functools
 import inspect
 import logging
@@ -58,6 +60,8 @@ class API(object):
     DispatchInvalidOptions = DispatchInvalidOptions
     Serializer = Serializer
     Throttle = Throttle
+    Expecter = Expecter
+    ValueIssue = property(lambda self: self.expecter.ValueIssue)
 
     dispatch_opts_defaults = {
         'auth': True,
@@ -96,6 +100,7 @@ class API(object):
         self.name = name
         self.registry = []
 
+        self.expecter = self.Expecter()
         self.serializer = self.Serializer()
 
     def __call__(self, view_or_resource=None, register=True, url=None, **opts):
@@ -311,11 +316,24 @@ class API(object):
         return opts
 
     def expect(self, expected, data):
-        '''expect({'key': int}, {'key': 1}) -> ???
+        '''expect({'key': int}, {'key': '1'}) -> clean data
 
-        ... TODO
+        In the above scenario, the returned data is:
+
+            {'key': 1}
+
+        Notice that the 1 goes from a string to an integer as part of the
+        cleaning process.  Ideally, the returned datastructure can be fed into
+        whatever it needs to be safely at this point without worrying about
+        types of the values as a side-effect of just validating a proper data
+        structure (no extraneous keys and proper expected values for the key).
+
+        Simple validators as well as complex are supported.  See
+        krankshaft.valid module for more details.
+
+        Raises ValueIssue when expected does not properly validate data.
         '''
-        pass
+        return self.expecter.expect(expected, data)
 
     def extra(self, **more):
         data = {

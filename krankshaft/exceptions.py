@@ -13,3 +13,9 @@ class QueryInvalidOptions(KrankshaftError):
 
 class QueryIssues(KrankshaftError):
     pass
+
+class ExpectedIssue(KrankshaftError):
+    pass
+
+class ValueIssue(KrankshaftError):
+    pass
