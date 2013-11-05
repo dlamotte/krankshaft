@@ -1,4 +1,4 @@
-from krankshaft.exceptions import \
+from .exceptions import \
     KrankshaftError, QueryInvalidOptions, QueryIssues
 
 class Query(object):
