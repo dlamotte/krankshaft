@@ -434,7 +434,7 @@ class API(object):
         prefix). It is essentially the same calling convention as
         django.conf.urls.url but minus the view parameter.
         '''
-        if url:
+        if url is not None:
             if not isinstance(url, basestring) \
                and not (isinstance(url, (list, tuple)) and 1 <= len(url) <= 4):
                 raise KrankshaftError(

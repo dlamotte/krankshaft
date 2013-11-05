@@ -371,6 +371,11 @@ class APITest(TestCaseNoDB):
                 self.assertEquals(e.response.status_code, code)
                 self.assertEquals(e.response['Location'], '/')
 
+    def test_register(self):
+        self.assertRaises(self.api.Error, self.api.register, None, url=())
+        self.assertRaises(self.api.Error, self.api.register, None, url=(1,2,3,4,5))
+        self.assertRaises(self.api.Error, self.api.register, None, url=object())
+
     def test_response(self):
         response = self.api.response(
             self.make_request(),
