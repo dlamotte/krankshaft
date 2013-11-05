@@ -1,14 +1,12 @@
 # TODO helpful validators
 #   - email
 #   - every django field needs a validator
-#
-# Pattern:
+
+# TODO explain pattern:
 #   raise ValueError when value is not accepted
 #   return value otherwise (can value be transformed? yes, '1' -> 1 [string to int])
-#
-#
-# expect() does the heavy lifting of deciding if we have a validator or
-# simply a type to check...
+
+# TODO document everything
 
 from .exceptions import ExpectedIssue, KrankshaftError, ValueIssue
 
@@ -34,6 +32,12 @@ class Expecter(object):
 
         return depthstr
 
+    # TODO accept options to alleviate "strict by default" options...
+    # TODO make sure api convenience wrapper passes these options through
+    #   strict_dict=False is shortcut for
+    #       ignore_extra_keys=True, ignore_missing_keys=True
+    # TODO how does a ValueIssue exception look when it hits the top?
+    #   do we need to override the __str__ method?
     def expect(self, expected, data, depth=None):
         depth = depth or []
 
@@ -189,12 +193,39 @@ def no_none(validator):
 #
 # validators
 #
-# TODO docs for each
 
 int = no_none(int)
 int_or_none = or_none(int)
 
-def list_x_or_more(n, validator):
+str = no_none(str)
+str_or_none = or_none(str)
+
+unicode = no_none(unicode)
+unicode_or_none = or_none(unicode)
+
+#
+# validator factories
+#
+
+# TODO max_length factory; ideally used with str/unicode, so make a convenience
+#   wrapper like str_max_length(10) instead of max_length(validator, 10)
+
+def int_range(validator, low, high):
+    def int_range_validator(value):
+        value = validator(value)
+        if not (low <= value <= high):
+            raise ValueError(
+                'The value is not within the range %s <= %s <= %s'
+                % (low, value, high)
+            )
+        return value
+
+    int_range_validator.__name__ = validator.__name__ + '_range_%s_to_%s' \
+        % (low, high)
+
+    return int_range_validator
+
+def list_x_or_more(validator, n):
     if n < 1:
         raise KrankshaftError(
             'list_x_or_more only accepts values >= 1, not %s' % n
@@ -224,28 +255,3 @@ def list_x_or_more(n, validator):
         n, validator.__name__
     )
     return list_x_or_more_validator
-
-str = no_none(str)
-str_or_none = or_none(str)
-
-unicode = no_none(unicode)
-unicode_or_none = or_none(unicode)
-
-#
-# validator factories
-#
-
-def int_range(validator, low, high):
-    def int_range_validator(value):
-        value = validator(value)
-        if not (low <= value <= high):
-            raise ValueError(
-                'The value is not within the range %s <= %s <= %s'
-                % (low, value, high)
-            )
-        return value
-
-    int_range_validator.__name__ = validator.__name__ + '_range_%s_to_%s' \
-        % (low, high)
-
-    return int_range_validator

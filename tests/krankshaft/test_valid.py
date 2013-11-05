@@ -117,19 +117,19 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect_raises(valid.int_range(valid.int, 0, 10), 'a')
 
     def test_list_x_or_more_zero(self):
-        self.expect_raises(valid.list_x_or_more(1, valid.int), [])
+        self.expect_raises(valid.list_x_or_more(valid.int, 1), [])
 
     def test_list_x_or_more_one(self):
-        self.expect(valid.list_x_or_more(1, valid.int), [1])
+        self.expect(valid.list_x_or_more(valid.int, 1), [1])
 
     def test_list_x_or_more_more(self):
-        self.expect(valid.list_x_or_more(1, valid.int), [1,2])
+        self.expect(valid.list_x_or_more(valid.int, 1), [1,2])
 
     def test_list_x_or_more_invalid_data(self):
-        self.expect_raises(valid.list_x_or_more(1, valid.int), ['a',2])
+        self.expect_raises(valid.list_x_or_more(valid.int, 1), ['a',2])
 
     def test_list_x_or_more_invalid_n(self):
-        self.assertRaises(valid.KrankshaftError, valid.list_x_or_more, 0, valid.int)
+        self.assertRaises(valid.KrankshaftError, valid.list_x_or_more, valid.int, 0)
 
     def test_str(self):
         self.expect(valid.str, 'key')
