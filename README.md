@@ -70,30 +70,104 @@ In `app/urls.py`:
 
 What more did you expect?
 
-notes about sub-classing
-========================
-The main API class along with other classes reference the classes they use
-internally, directly on the class definition.  So you can override part of
-the API by simply sub-classing it and assigning a new class.
+resource example
+================
 
-For example:
+In `app/api.py`:
 
-    class MyAPI(API):
-        Serializer = MySerializer
+    from django.conf import settings
 
-In some cases, the initializer will take parameters to configure its behavior.
-However, the API will initialize the class later (either in its initializer or
-on demand).  So to pass options in the class definition, you'll need to use
-a partial.
+    api = API('v1', debug=settings.DEBUG)
 
-Example:
+    @api(url='^model/(?P<id>\d+)/$')
+    class ModelResource(object):
+        def get(self, request, id):
+            ...
 
-    from functools import partial
+        def put(self, request, id):
+            ...
 
-    class MyAPI(API):
-        Serializer = partial(MySerializer, option='value')
+        def delete(self, request, id):
+            ...
 
-Then the Serializer will later be passed the option when it's initialized.
+In `app/urls.py`:
+
+    from django.conf.urls import patterns, include, url
+    from .api import api
+
+    urlpatterns = patterns('',
+        url('^api/', include(api.urls)),
+    )
+
+This enables clients to make GET/PUT/DELETE requests to the endpoint:
+
+    /api/v1/model/<id>/
+
+If a POST is made, the client will receive the proper 405 response with the
+Allow header set to GET, PUT, DELETE.
+
+You can customize resources even more.  You can define your own routing scheme:
+
+    class ModelResource(object):
+        ...
+        def route(self, request, id):
+            # this is approximately the default
+            try:
+                view = getattr(self, request.method.lower())
+
+            except AttributeError:
+                return api.response(request, 405)
+
+            else:
+                return view(request, id)
+
+Or setup urls and multiple routes:
+
+    class ModelResource(object):
+        ...
+
+        def get_list(self, request):
+            ...
+
+        def post_list(self, request):
+            ...
+
+        def put_list(self, request):
+            ...
+
+        def delete_list(self, request):
+            ...
+
+        def query(self, request):
+            if request.method != 'POST':
+                return api.response(request, 405, Allow='POST')
+            ...
+
+        def route(self, suffix, request, *args, **kwargs):
+            # this is approximately the default
+            try:
+                view = getattr(self, request.method.lower() + suffix)
+
+            except AttributeError:
+                return api.response(request, 405)
+
+            else:
+                return view(request, *args, **kwargs)
+
+        def route_list(self, request):
+            return self.route('_list', request)
+
+        def route_object(self, request, id):
+            return self.route('', request, id)
+
+        @property
+        def urls(self):
+            from django.conf.urls import patterns, url
+            return patterns('', [
+                url(r'^model/$', api.wrap(self.route_list)),
+                url(r'^model/query/$', api.wrap(self.query)),
+                url(r'^model/(?P<id>\d+)/$', api.wrap(self.route_object)),
+            ])
 
 what works
 ==========
