@@ -98,12 +98,12 @@ Then the Serializer will later be passed the option when it's initialized.
 what works
 ==========
 
-* simple authentication/authorization schemes
-* serialization of primitive types (complex types require sub-classing)
-  respecting HTTP Accept Header
+* simple authentication/authorization schemes (not OAuth at the moment)
+* serialization of primitive types respecting HTTP Accept Header
 * abort (raise-like http response return)
 * throttling
 * resource routing
+* query application (ie: `?field__startswith=something&order_by=field`)
 
 TODO
 ====
@@ -113,4 +113,5 @@ TODO
 * easy-etag support
 * flask support
 * model serialization (but first, some helpers)
+* OAuth (1 and 2)
 * pagination

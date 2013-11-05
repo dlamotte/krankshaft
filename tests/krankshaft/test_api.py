@@ -245,7 +245,7 @@ class APITest(TestCaseNoDB):
 
     def test_dispatch_opts_badopt(self):
         self.assertRaises(
-            self.api.InvalidDispatchOptions,
+            self.api.DispatchInvalidOptions,
             self.api.dispatch_opts,
             {'__badopt': True}
         )

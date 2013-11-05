@@ -10,7 +10,7 @@
 
 from . import util
 from .auth import Auth
-from .exceptions import Abort, InvalidDispatchOptions, KrankshaftError
+from .exceptions import Abort, DispatchInvalidOptions, KrankshaftError
 from .serializer import Serializer
 from .throttle import Throttle
 from .util import Annotate
@@ -55,7 +55,7 @@ class API(object):
     Abort = Abort
     Auth = Auth
     Error = KrankshaftError
-    InvalidDispatchOptions = InvalidDispatchOptions
+    DispatchInvalidOptions = DispatchInvalidOptions
     Serializer = Serializer
     Throttle = Throttle
 
@@ -301,7 +301,7 @@ class API(object):
                 invalid.append(name)
 
         if invalid:
-            raise self.InvalidDispatchOptions(
+            raise self.DispatchInvalidOptions(
                 'You passed invalid dispatch options: %s' % ', '.join(invalid)
             )
 
