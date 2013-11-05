@@ -178,6 +178,7 @@ what works
 * throttling
 * resource routing
 * query application (ie: `?field__startswith=something&order_by=field`)
+* data validation
 
 TODO
 ====
