@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from datetime import timedelta
 from django.core.cache import cache
 from functools import partial
+from krankshaft import valid
 from krankshaft.api import API as APIBase
 from krankshaft.auth import Auth as AuthBase
 from krankshaft.authn import Authn
@@ -248,6 +249,20 @@ class APITest(TestCaseNoDB):
             self.api.InvalidOptions,
             self.api.options_dispatch,
             {'__badopt': True}
+        )
+
+    def test_expect(self):
+        self.assertEqual(
+            self.api.expect({'key': valid.int}, {'key': '1'}),
+            {'key': 1}
+        )
+
+    def test_expect_fail(self):
+        self.assertRaises(
+            self.api.ValueIssue,
+            self.api.expect,
+            {'key': valid.int},
+            {'key': 'a'}
         )
 
     def test_handle_exc_abort(self):
