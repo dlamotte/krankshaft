@@ -1,3 +1,5 @@
+from .exceptions import InvalidOptions
+
 class Annotate(object):
     '''
     with Annotate(request, 'auth', Auth(request)):
@@ -18,6 +20,17 @@ class Annotate(object):
         for name, value in self.annotations.iteritems():
             delattr(self.obj, name)
 
+def defaults(opts, *defaults):
+    '''defaults({'a': 'a'}, {'a': 'b', 'b': 'b'}) -> {'a': 'a', 'b': 'b'}
+
+    Set defaults in a dictionary.
+    '''
+    for default in defaults:
+        for key, value in default.iteritems():
+            if key not in opts:
+                opts[key] = value
+    return opts
+
 def kw_as_header(kw):
     '''kw_as_header('Content_Type') -> Content-Type
 
@@ -26,3 +39,15 @@ def kw_as_header(kw):
     serves as a translation for convenience.
     '''
     return kw.replace('_', '-')
+
+def valid(opts, allowed):
+    '''valid({'key': 'value'}, 'opt') -> raise InvalidOptions
+
+    Validate that a dictionary has only valid options/keys.
+    '''
+    allowed = set(allowed)
+    used = set(opts.keys())
+    invalid = used - allowed
+    if invalid:
+        raise InvalidOptions(', '.join(sorted(list(invalid))))
+    return opts

@@ -8,7 +8,7 @@ class Abort(KrankshaftError):
 class DispatchInvalidOptions(KrankshaftError):
     pass
 
-class QueryInvalidOptions(KrankshaftError):
+class InvalidOptions(KrankshaftError):
     pass
 
 class QueryIssues(KrankshaftError):
