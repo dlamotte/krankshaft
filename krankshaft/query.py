@@ -1,6 +1,6 @@
+from . import util
 from .exceptions import \
     InvalidOptions, KrankshaftError, QueryIssues
-from . import util
 
 class Query(object):
     '''
