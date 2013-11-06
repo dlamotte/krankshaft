@@ -15,4 +15,11 @@ class ExpectedIssue(KrankshaftError):
     pass
 
 class ValueIssue(KrankshaftError):
-    pass
+    def __str__(self):
+        return '\n'.join([
+            self.args[0],
+            '\n'.join([
+                '%s: %s' % (self.__class__.__name__, arg)
+                for arg in self.args[1:]
+            ]),
+        ])
