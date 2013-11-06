@@ -5,9 +5,6 @@ class Abort(KrankshaftError):
     def __init__(self, response):
         self.response = response
 
-class DispatchInvalidOptions(KrankshaftError):
-    pass
-
 class InvalidOptions(KrankshaftError):
     pass
 

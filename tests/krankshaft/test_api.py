@@ -237,16 +237,16 @@ class APITest(TestCaseNoDB):
             {'key': 'value', 'invalid': ''}
         )
 
-    def test_dispatch_opts_empty(self):
-        self.assertEqual(self.api.dispatch_opts({}), self.api.dispatch_opts_defaults)
+    def test_defaults_dispatch_empty(self):
+        self.assertEqual(self.api.options_dispatch({}), self.api.defaults_dispatch)
 
-    def test_dispatch_opts_none(self):
-        self.assertEqual(self.api.dispatch_opts(None), self.api.dispatch_opts_defaults)
+    def test_defaults_dispatch_none(self):
+        self.assertEqual(self.api.options_dispatch(None), self.api.defaults_dispatch)
 
-    def test_dispatch_opts_badopt(self):
+    def test_defaults_dispatch_badopt(self):
         self.assertRaises(
-            self.api.DispatchInvalidOptions,
-            self.api.dispatch_opts,
+            self.api.InvalidOptions,
+            self.api.options_dispatch,
             {'__badopt': True}
         )
 

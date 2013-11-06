@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from django.db import models
+from krankshaft.exceptions import InvalidOptions
 from krankshaft.query import DjangoQuery, Query
 from tests.base import TestCaseNoDB
 import pytest
@@ -33,7 +34,7 @@ class QueryTest(TestCaseNoDB):
         self.assertEqual(query.opts, self.Query.defaults)
 
     def test_invalid_options(self):
-        self.assertRaises(self.Query.InvalidOptions, self.Query, {}, {
+        self.assertRaises(InvalidOptions, self.Query, {}, {
             'not_a_valid_option': True
         })
 
@@ -76,6 +77,17 @@ class DjangoQueryTest(QueryTest):
 
     def test_apply_defer_disallow_cross_relation(self):
         self.apply_raises({'defer': 'foreign__char_unindexed'})
+
+    def test_apply_defer_disallow_cross_relation_override(self):
+        self.assertRaises(
+            self.Query.Issues,
+            self.Query(
+                {'defer': 'foreign__char_unindexed'},
+                {'defer_allow_related': True}
+            ).apply,
+            Fake.objects.all(),
+            defer_allow_related=False
+        )
 
     def test_apply_defer_allow_cross_relation(self):
         queryset = self.apply_assert({'defer': 'foreign__char_unindexed'}, defer_allow_related=True)

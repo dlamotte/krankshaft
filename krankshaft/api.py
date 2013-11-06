@@ -10,8 +10,7 @@
 
 from . import util
 from .auth import Auth
-from .exceptions import \
-    Abort, DispatchInvalidOptions, KrankshaftError, InvalidOptions, ValueIssue
+from .exceptions import Abort, KrankshaftError, InvalidOptions, ValueIssue
 from .serializer import Serializer
 from .throttle import Throttle
 from .util import Annotate
@@ -58,13 +57,12 @@ class API(object):
     Auth = Auth
     Error = KrankshaftError
     Expecter = Expecter
-    DispatchInvalidOptions = DispatchInvalidOptions
     InvalidOptions = InvalidOptions
     Serializer = Serializer
     Throttle = Throttle
     ValueIssue = property(lambda self: self.expecter.ValueIssue)
 
-    dispatch_opts_defaults = {
+    defaults_dispatch = {
         'auth': True,
         'error': None,
         'only': False,
@@ -244,7 +242,7 @@ class API(object):
         for api.abort()) as well as handle authenticating, throttling, ... as
         defined by opts.
         '''
-        opts = self.dispatch_opts(opts)
+        opts = self.options_dispatch(opts)
 
         try:
             if opts['only']:
@@ -280,42 +278,6 @@ class API(object):
 
         except Exception:
             return self.handle_exc(request, error=opts['error'])
-
-    def dispatch_opts(self, opts):
-        '''dispatch_opts({'auth': True}) -> {'auth': True, ... defaults}
-
-        Use validate=True to only do validation on the options and not update
-        them with the defaults.
-
-        Options:
-            auth: only authed requests get through (default: True)
-                optionally pass in Auth subclass
-            error: message to use in case of unhandled exception
-            only: only wrap the method to provide
-                .abort()/unhandled-exception support
-            throttle: rate-limit clients (default: True)
-                optionally pass in Throttle subclass, depends on auth
-            throttle_suffix: suffix the throttle key
-                throttle the view seperately
-        '''
-        # TODO this could be rewritten using util.defaults and util.valid
-        defaults = self.dispatch_opts_defaults
-        opts = opts.copy() if opts else {}
-
-        invalid = []
-        for name in opts.iterkeys():
-            if name not in defaults:
-                invalid.append(name)
-
-        if invalid:
-            raise self.DispatchInvalidOptions(
-                'You passed invalid dispatch options: %s' % ', '.join(invalid)
-            )
-
-        for name, value in defaults.iteritems():
-            opts.setdefault(name, value)
-
-        return opts
 
     def expect(self, expected, data):
         '''expect({'key': int}, {'key': '1'}) -> clean data
@@ -444,6 +406,25 @@ class API(object):
         Helper.__name__ = 'Helper.' + klass_to_wrap.__name__
 
         return Helper()
+
+    def options_dispatch(self, opts):
+        '''options_dispatch({'auth': False}) -> {'auth': False, ... defaults}
+
+        Options:
+            auth: only authed requests get through (default: True)
+                optionally pass in Auth subclass
+            error: message to use in case of unhandled exception
+            only: only wrap the method to provide
+                .abort()/unhandled-exception support
+            throttle: rate-limit clients (default: True)
+                optionally pass in Throttle subclass, depends on auth
+            throttle_suffix: suffix the throttle key
+                throttle the view seperately
+        '''
+        return util.valid(
+            util.defaults({} if opts is None else opts, self.defaults_dispatch),
+            self.defaults_dispatch.keys()
+        )
 
     def redirect(self, request, status, location, **headers):
         '''redirect(request, 302, '/location') -> response
@@ -658,9 +639,9 @@ class API(object):
             register    whether or not to register the view (default: False)
             url         passed directly to register()
 
-        See dispatch_opts() for more available options.
+        See options_dispatch() for more available options.
         '''
-        self.dispatch_opts(opts)
+        self.options_dispatch(opts)
 
         def decorator(view_or_resource):
             if inspect.isclass(view_or_resource):

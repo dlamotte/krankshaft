@@ -28,7 +28,7 @@ class Expecter(object):
     }
 
     def __init__(self, **opts):
-        self.opts = self.options(opts)
+        self.opts = self.options(opts, self.defaults)
 
     def depthstr(self, depth):
         depthstr = 'depth@root'
@@ -41,7 +41,7 @@ class Expecter(object):
     #   do we need to override the __str__ method?
     def expect(self, expected, data, depth=None, **opts):
         if depth is None:
-            opts = self.options(opts)
+            opts = self.options(opts, self.opts)
 
         depth = depth or []
 
@@ -166,9 +166,9 @@ class Expecter(object):
     def expect_tuple(self, expected, data, depth, opts):
         return tuple(self.expect_list(expected, data, depth, opts))
 
-    def options(self, opts):
+    def options(self, opts, defaults):
         return util.valid(
-            util.defaults(self.shortcuts(opts), self.defaults),
+            util.defaults(self.shortcuts(opts), defaults),
             self.defaults.keys()
         )
 

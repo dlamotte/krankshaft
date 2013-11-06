@@ -12,7 +12,7 @@ class Query(object):
     defaults = {}
 
     def __init__(self, qs, opts=None):
-        self.opts = self.options(opts or {})
+        self.opts = self.options(opts or {}, self.defaults)
         self.qs = qs
 
     def apply(self, query, **opts):
@@ -25,13 +25,13 @@ class Query(object):
         '''
         return self.__class__(self.qs.copy(), self.opts.copy())
 
-    def options(self, opts):
-        '''options({}) -> opts
+    def options(self, opts, defaults):
+        '''options({}, self.defaults) -> opts
 
         Setup options using defaults.
         '''
         return util.valid(
-            util.defaults(opts, self.defaults),
+            util.defaults(opts, defaults),
             self.defaults.keys()
         )
 
@@ -157,7 +157,7 @@ class DjangoQuery(Query):
 
         '''
         errors = []
-        opts = self.options(opts)
+        opts = self.options(opts, self.opts)
 
         model = query.model
 
