@@ -41,6 +41,11 @@ in data. (it does not stop at the first offending value)
 
 from . import util
 from .exceptions import ExpectedIssue, KrankshaftError, ValueIssue
+from django.core import validators
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.template.defaultfilters import slugify
+from django.utils import dateparse
 
 class Expecter(object):
     '''
@@ -125,10 +130,10 @@ class Expecter(object):
     homegenus elements which is very typical.
 
     This makes it a bit tough to validate a list of one or more members.  But
-    there is a special validator for that.  The `list_x_or_more` is the
+    there is a special validator for that.  The `list_n_or_more` is the
     validator you want:
 
-        expecter.expect(valid.list_x_or_more(valid.int, 1), ['1', 2])
+        expecter.expect(valid.list_n_or_more(valid.int, 1), ['1', 2])
 
     The above will guarantee at least one member exists and that all members
     are `valid.int`s.
@@ -142,6 +147,8 @@ class Expecter(object):
         'ignore_extra_keys': False,
         'ignore_missing_keys': False,
     }
+
+    field_to_validator = {} # setup at end of module
 
     def __init__(self, **opts):
         self.opts = self.options(opts, self.defaults)
@@ -304,6 +311,26 @@ class Expecter(object):
         '''
         return tuple(self.expect_list(expected, data, depth, opts))
 
+    def from_field(self, field):
+        validator = self.field_to_validator[field]
+
+        if not field.null:
+            validator = no_none(validator)
+
+        if field.choices:
+            validator = choice(validator, tuple([
+                value
+                for value, display in field.choices
+            ]))
+
+        if hasattr(field, 'max_length'):
+            validator = max_length(validator, field.max_length)
+
+        if field.validators:
+            validator = django_validator(validator, *field.validators)
+
+        return validator
+
     def options(self, opts, defaults):
         '''
         Validate and set default options.
@@ -372,39 +399,81 @@ def no_none(validator):
 # validator factories
 #
 
-def range(validator, low, high):
-    '''range(valid.int, 0, 10) -> int_range_0_to_10
+def choice(validator, choices):
+    '''choice(valid.str, ['a', 'b', 'c']) -> str_choices
 
-    Wrap validator that also validates the returned value lies within a given
-    range.
+    Wrap validator that also validates the returned value is in the list of
+    valid choices.
     '''
-    def range_validator(value):
+    def choice_validator(value):
         value = validator(value)
-        if value is not None and not (low <= value <= high):
-            raise ValueError(
-                'The value is not within the range %s <= %s <= %s'
-                % (low, value, high)
-            )
+        if value is not None and value not in choices:
+            raise ValueError('The value is not a valid choice: %s' % value)
         return value
 
-    range_validator.__name__ = validator.__name__ + '_range_%s_to_%s' \
-        % (low, high)
+    choice_validator.__name__ = validator.__name__ + '_choices'
 
-    return range_validator
+    return choice_validator
 
-def list_x_or_more(validator, n):
-    '''list_x_or_more(valid.int, 1) -> list_1_or_more_int
+def csv(validator, separator=','):
+    '''csv(valid.int) -> int_csv
+
+    Wrap validator so that it validates a list separated by commas.
+    '''
+    @expecterfunction
+    def csv_validator(expecter, data, depth, opts):
+        data = str(data) # validate data is a str (not None)
+
+        clean = expecter.expect(
+            [validator],
+            [member for member in data.split(',') if member],
+            depth=depth,
+            **opts
+        )
+        return ','.join([
+            str(member)
+            for member in clean
+        ])
+
+    csv_validator.__name__ = validator.__name__ + '_csv'
+
+    return csv_validator
+
+def django_validator(validator, *validators):
+    '''django_validator(valid.str, *field.validators) -> django_validator
+
+    Use django validators as extra validation to a value.
+    '''
+    def django_validator_validator(value):
+        value = validator(value)
+
+        if value is not None:
+            for django_is_valid in validators:
+                try:
+                    django_is_valid(value)
+                except ValidationError as exc:
+                    raise ValueError(exc.messages[0])
+
+        return value
+
+    django_validator_validator.__name__ = \
+        validator.__name__ + '_django_validator'
+
+    return django_validator_validator
+
+def list_n_or_more(validator, n):
+    '''list_n_or_more(valid.int, 1) -> list_1_or_more_int
 
     Wrap a validator that also validates the returned list has one or more
     members.
     '''
     if n < 1:
         raise KrankshaftError(
-            'list_x_or_more only accepts values >= 1, not %s' % n
+            'list_n_or_more only accepts values >= 1, not %s' % n
         )
 
     @expecterfunction
-    def list_x_or_more_validator(expecter, data, depth, opts):
+    def list_n_or_more_validator(expecter, data, depth, opts):
         clean = None
         errors = []
         try:
@@ -423,10 +492,10 @@ def list_x_or_more(validator, n):
 
         return clean
 
-    list_x_or_more_validator.__name__ = 'list_%s_or_more_%s' % (
+    list_n_or_more_validator.__name__ = 'list_%s_or_more_%s' % (
         n, validator.__name__
     )
-    return list_x_or_more_validator
+    return list_n_or_more_validator
 
 def max_length(validator, n):
     '''max_length(valid.str, 20) -> str_max_length_20
@@ -447,6 +516,36 @@ def max_length(validator, n):
 
     return max_length_validator
 
+def range(validator, low, high):
+    '''range(valid.int, 0, 10) -> int_range_0_to_10
+
+    Wrap validator that also validates the returned value lies within a given
+    range.
+
+    You can create an unbounded range by using None as either bound.
+    '''
+    def range_validator(value):
+        value = validator(value)
+        if value is not None and not (
+            low <= value <= high
+            if low is not None and high is not None
+            else low <= value if low is not None
+            else value <= high
+        ):
+            raise ValueError(
+                'The value is not within the range %s <= %s <= %s'
+                % (low, value, high)
+            )
+        return value
+
+    range_validator.__name__ = validator.__name__ + '_range_%s_to_%s' \
+        % (low, high)
+
+    return range_validator
+
+float_range = lambda low, high: range(float, low, high)
+float_or_none_range = lambda low, high: range(float_or_none, low, high)
+
 int_range = lambda low, high: range(int, low, high)
 int_or_none_range = lambda low, high: range(int_or_none, low, high)
 
@@ -457,18 +556,116 @@ unicode_max_length = lambda n: max_length(unicode, n)
 unicode_or_none_max_length = lambda n: max_length(unicode_or_none, n)
 
 #
-# validators
+# primitive validators
 #
 
-int = no_none(int)
-int_or_none = or_none(int)
+float = no_none(__builtins__['float'])
+float_or_none = or_none(__builtins__['float'])
 
-str = no_none(str)
-str_or_none = or_none(str)
+int = no_none(__builtins__['int'])
+int_csv = csv(int)
+int_or_none = or_none(__builtins__['int'])
+int_csv_or_none = or_none(int_csv)
 
-unicode = no_none(unicode)
-unicode_or_none = or_none(unicode)
+str = no_none(__builtins__['str'])
+str_or_none = or_none(__builtins__['str'])
 
-# TODO helpful validators
-#   - email
-#   - every django field needs a validator
+unicode = no_none(__builtins__['unicode'])
+unicode_or_none = or_none(__builtins__['unicode'])
+
+#
+# complex validators
+#
+
+def bool_or_none(value):
+    '''bool_or_none('yes') -> True
+
+    Take a truthy/falsey string and make it a boolean.
+    '''
+    truthy = ('1', 'true', 'yes')
+    str_or_none_lower = lambda s: str(s).lower() if s is not None else None
+    str_or_none_lower.__name__ = 'str_or_none_lower'
+    value = choice(
+        str_or_none_lower,
+        ('0', 'false', 'no', 'null') + truthy
+    )(value)
+
+    if value is None:
+        return None
+    else:
+        return value in truthy
+bool = no_none(bool_or_none)
+
+def date_or_none(value):
+    value = str_or_none(value)
+
+    if value is not None:
+        clean = dateparse.parse_date(value)
+        if clean is None:
+            raise ValueError('Could not parse date: %s' % value)
+        value = clean
+
+    return value
+date = no_none(date_or_none)
+
+def datetime_or_none(value):
+    value = str_or_none(value)
+
+    if value is not None:
+        clean = dateparse.parse_datetime(value)
+        if clean is None:
+            raise ValueError('Could not parse datetime: %s' % value)
+        value = clean
+
+    return value
+datetime = no_none(datetime_or_none)
+
+email = django_validator(str, validators.validate_email)
+email_or_none = django_validator(str_or_none, validators.validate_email)
+
+def slug_or_none(value):
+    value = str_or_none(value)
+    if value is not None:
+        value = slugify(value)
+    return value
+slug = no_none(slug_or_none)
+
+def time_or_none(value):
+    value = str_or_none(value)
+
+    if value is not None:
+        clean = dateparse.parse_time(value)
+        if clean is None:
+            raise ValueError('Could not parse time: %s' % value)
+        value = clean
+
+    return value
+time = no_none(time_or_none)
+
+
+Expecter.field_to_validator = {
+    models.AutoField                    : int_or_none_range(1, 2147483647),
+    models.BigIntegerField              : int_or_none_range(-9223372036854775808, 9223372036854775807),
+    models.BooleanField                 : bool_or_none,
+    models.CharField                    : str_or_none,
+    models.CommaSeparatedIntegerField   : int_csv_or_none,
+    models.DateField                    : date_or_none,
+    models.DateTimeField                : datetime_or_none,
+    models.DecimalField                 : str_or_none,
+    models.EmailField                   : email_or_none,
+#    models.FileField                    : file_or_none, # TODO
+#    models.FilePathField                : filepath_or_none, # TODO
+    models.FloatField                   : float_or_none,
+    models.GenericIPAddressField        : str_or_none,
+    models.IPAddressField               : str_or_none,
+#    models.ImageField                   : image_or_none, # TODO
+    models.IntegerField                 : int_or_none_range(-2147483648, 2147483647),
+    models.NullBooleanField             : bool_or_none,
+    models.PositiveIntegerField         : int_or_none_range(0, 2147483647),
+    models.PositiveSmallIntegerField    : int_or_none_range(0, 32767),
+    models.SlugField                    : slug_or_none,
+    models.SmallIntegerField            : int_or_none_range(-32768, 32767),
+    models.TextField                    : str_or_none,
+    models.TimeField                    : time_or_none,
+    models.URLField                     : str_or_none,
+}

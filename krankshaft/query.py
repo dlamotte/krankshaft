@@ -1,4 +1,4 @@
-from . import util
+from . import util, valid
 from .exceptions import KrankshaftError, QueryIssues
 
 class Query(object):
@@ -204,11 +204,9 @@ class DjangoQuery(Query):
                     continue
 
             elif lookup == 'isnull':
-                value = value.lower()
-                if value in self.values_bool_all:
-                    value = value in self.values_bool_true
-
-                else:
+                try:
+                    value = valid.bool(value)
+                except ValueError as exc:
                     errors.append(
                         'An isnull lookup requires a truthy/falsey value: %s'
                         % name
