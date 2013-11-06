@@ -1,6 +1,5 @@
 from . import util
-from .exceptions import \
-    InvalidOptions, KrankshaftError, QueryIssues
+from .exceptions import KrankshaftError, QueryIssues
 
 class Query(object):
     '''
@@ -8,16 +7,12 @@ class Query(object):
     ORM.
     '''
     Error = KrankshaftError
-    InvalidOptions = InvalidOptions
     Issues = QueryIssues
 
     defaults = {}
 
     def __init__(self, qs, opts=None):
-        self.opts = util.valid(
-            util.defaults(opts or {}, self.defaults),
-            self.defaults.keys()
-        )
+        self.opts = self.options(opts or {})
         self.qs = qs
 
     def apply(self, query, **opts):
@@ -29,6 +24,16 @@ class Query(object):
         Create a copy of the current query.
         '''
         return self.__class__(self.qs.copy(), self.opts.copy())
+
+    def options(self, opts):
+        '''options({}) -> opts
+
+        Setup options using defaults.
+        '''
+        return util.valid(
+            util.defaults(opts, self.defaults),
+            self.defaults.keys()
+        )
 
     def without(self, *names):
         '''without('order_by') -> new Query
@@ -152,10 +157,7 @@ class DjangoQuery(Query):
 
         '''
         errors = []
-        opts = util.valid(
-            util.defaults(opts, self.opts),
-            self.defaults.keys()
-        )
+        opts = self.options(opts)
 
         model = query.model
 

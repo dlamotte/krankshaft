@@ -8,6 +8,7 @@
 
 # TODO document everything
 
+from . import util
 from .exceptions import ExpectedIssue, KrankshaftError, ValueIssue
 
 # TODO document how to write a data validator, ... validate data raise
@@ -15,15 +16,19 @@ from .exceptions import ExpectedIssue, KrankshaftError, ValueIssue
 # TODO document overall usage... this is a completely new concept and is somewhat
 # complex
 # TODO document specifically how expect_list() works
+# TODO document 'strict_dict' shortcut
 
 class Expecter(object):
     ExpectedIssue = ExpectedIssue
     ValueIssue = ValueIssue
 
-    # TODO
-    #   strict by default?
-    #   option to lift "extra keys" validation in dictionaries
-    #   option to lift "missing keys" validation in dictionaries
+    defaults = {
+        'ignore_extra_keys': False,
+        'ignore_missing_keys': False,
+    }
+
+    def __init__(self, **opts):
+        self.opts = self.options(opts)
 
     def depthstr(self, depth):
         depthstr = 'depth@root'
@@ -32,20 +37,20 @@ class Expecter(object):
 
         return depthstr
 
-    # TODO accept options to alleviate "strict by default" options...
-    # TODO make sure api convenience wrapper passes these options through
-    #   strict_dict=False is shortcut for
-    #       ignore_extra_keys=True, ignore_missing_keys=True
     # TODO how does a ValueIssue exception look when it hits the top?
     #   do we need to override the __str__ method?
-    def expect(self, expected, data, depth=None):
+    def expect(self, expected, data, depth=None, **opts):
+        if depth is None:
+            opts = self.options(opts)
+
         depth = depth or []
 
         if hasattr(expected, '__call__'):
             try:
                 if getattr(expected, 'needs_expecter', False):
                     data = expected(self, data,
-                        depth=depth + [expected.__name__]
+                        depth=depth + [expected.__name__],
+                        opts=opts
                     )
 
                 else:
@@ -79,25 +84,29 @@ class Expecter(object):
             )
 
         return method(expected, data,
-            depth=depth + [expected.__class__.__name__]
+            depth=depth + [expected.__class__.__name__],
+            opts=opts
         )
 
-    def expect_dict(self, expected, data, depth):
+    def expect_dict(self, expected, data, depth, opts):
         expected_keys = set(expected.keys())
         data_keys = set(data.keys())
         clean = {}
 
         errors = []
-        if expected_keys != data_keys:
+        if (
+            not (opts['ignore_extra_keys'] and opts['ignore_missing_keys'])
+            and expected_keys != data_keys
+        ):
             extra_keys = data_keys - expected_keys
             missing_keys = expected_keys - data_keys
-            if extra_keys:
+            if not opts['ignore_extra_keys'] and extra_keys:
                 errors.append('%s: Extra keys, %s' % (
                     self.depthstr(depth),
                     ', '.join(list(extra_keys)),
                 ))
 
-            if missing_keys:
+            if not opts['ignore_missing_keys'] and missing_keys:
                 errors.append('%s: Missing keys: %s' % (
                     self.depthstr(depth),
                     ', '.join(list(missing_keys)),
@@ -117,7 +126,7 @@ class Expecter(object):
 
         return clean
 
-    def expect_list(self, expected, data, depth):
+    def expect_list(self, expected, data, depth, opts):
         clean = []
         errors = []
 
@@ -154,8 +163,21 @@ class Expecter(object):
 
         return clean
 
-    def expect_tuple(self, expected, data, depth):
-        return tuple(self.expect_list(expected, data, depth))
+    def expect_tuple(self, expected, data, depth, opts):
+        return tuple(self.expect_list(expected, data, depth, opts))
+
+    def options(self, opts):
+        return util.valid(
+            util.defaults(self.shortcuts(opts), self.defaults),
+            self.defaults.keys()
+        )
+
+    def shortcuts(self, opts):
+        if 'strict_dict' in opts:
+            strict_dict = opts.pop('strict_dict')
+            opts['ignore_extra_keys'] = not strict_dict
+            opts['ignore_missing_keys'] = not strict_dict
+        return opts
 
 #
 # validator function markers
@@ -166,7 +188,7 @@ def expecterfunction(function):
     Expose the expecter to the validator.
 
         @expecterfunction
-        def validator(expecter, data, depth):
+        def validator(expecter, data, depth, opts):
             ...
 
     '''
@@ -216,11 +238,11 @@ def list_x_or_more(validator, n):
         )
 
     @expecterfunction
-    def list_x_or_more_validator(expecter, data, depth):
+    def list_x_or_more_validator(expecter, data, depth, opts):
         clean = None
         errors = []
         try:
-            clean = expecter.expect([validator], data, depth=depth)
+            clean = expecter.expect([validator], data, depth=depth, **opts)
         except expecter.ValueIssue as exc:
             errors.extend(exc.args)
 

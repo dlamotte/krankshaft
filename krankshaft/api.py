@@ -11,7 +11,7 @@
 from . import util
 from .auth import Auth
 from .exceptions import \
-    Abort, DispatchInvalidOptions, KrankshaftError, ValueIssue
+    Abort, DispatchInvalidOptions, KrankshaftError, InvalidOptions, ValueIssue
 from .serializer import Serializer
 from .throttle import Throttle
 from .util import Annotate
@@ -57,10 +57,11 @@ class API(object):
     Abort = Abort
     Auth = Auth
     Error = KrankshaftError
+    Expecter = Expecter
     DispatchInvalidOptions = DispatchInvalidOptions
+    InvalidOptions = InvalidOptions
     Serializer = Serializer
     Throttle = Throttle
-    Expecter = Expecter
     ValueIssue = property(lambda self: self.expecter.ValueIssue)
 
     dispatch_opts_defaults = {
@@ -297,6 +298,7 @@ class API(object):
             throttle_suffix: suffix the throttle key
                 throttle the view seperately
         '''
+        # TODO this could be rewritten using util.defaults and util.valid
         defaults = self.dispatch_opts_defaults
         opts = opts.copy() if opts else {}
 

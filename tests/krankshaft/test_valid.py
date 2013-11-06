@@ -4,13 +4,13 @@ from krankshaft import valid
 from tests.base import TestCaseNoDB
 
 class BaseExpecterTest(TestCaseNoDB):
-    def expect(self, expected, data, clean=None):
+    def expect(self, expected, data, clean=None, **opts):
         if clean is None:
             clean = data
-        assert clean == self.expecter.expect(expected, data)
+        assert clean == self.expecter.expect(expected, data, **opts)
 
-    def expect_raises(self, expected, data):
-        self.assertRaises(valid.ValueIssue, self.expecter.expect, expected, data)
+    def expect_raises(self, expected, data, **opts):
+        self.assertRaises(valid.ValueIssue, self.expecter.expect, expected, data, **opts)
 
     def setUp(self):
         self.expecter = valid.Expecter()
@@ -69,6 +69,15 @@ class ExpecterTest(BaseExpecterTest):
 
     def test_expect_list_unbalanced_lists(self):
         self.expect_raises([valid.int, valid.int, valid.int], [1])
+
+    def test_expect_options_ignore_extra_keys(self):
+        self.expect({'key': valid.int}, {'key': 1, 'extra': 2}, {'key': 1}, ignore_extra_keys=True)
+
+    def test_expect_options_ignore_missing_keys(self):
+        self.expect({'key': valid.int}, {}, ignore_missing_keys=True)
+
+    def test_expect_options_not_strict_dict(self):
+        self.expect({'key': valid.int}, {'extra': 2}, {}, strict_dict=False)
 
     def test_expect_tuple_is_like_list(self):
         self.expect((valid.int, valid.int, valid.int), (1, 1, 1))
