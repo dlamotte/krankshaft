@@ -137,8 +137,26 @@ class ValidatorsTest(BaseExpecterTest):
     def test_str_with_none(self):
         self.expect_raises(valid.str, None)
 
+    def test_str_max_length(self):
+        self.expect(valid.str_max_length(1), '')
+
+    def test_str_max_length_over_limit(self):
+        self.expect_raises(valid.str_max_length(1), 'aa')
+
+    def test_str_max_length_with_none(self):
+        self.expect_raises(valid.str_max_length(1), None)
+
     def test_str_or_none_with_none(self):
         self.expect(valid.str_or_none, None)
+
+    def test_str_or_none_max_length(self):
+        self.expect(valid.str_or_none_max_length(1), '')
+
+    def test_str_or_none_max_length_over_limit(self):
+        self.expect_raises(valid.str_or_none_max_length(1), 'aa')
+
+    def test_str_or_none_max_length_with_none(self):
+        self.expect(valid.str_or_none_max_length(1), None)
 
     def test_unicode(self):
         self.expect(valid.unicode, 'key')
@@ -146,5 +164,23 @@ class ValidatorsTest(BaseExpecterTest):
     def test_unicode_with_none(self):
         self.expect_raises(valid.unicode, None)
 
+    def test_unicode_max_length(self):
+        self.expect(valid.unicode_max_length(1), '')
+
+    def test_unicode_max_length_over_limit(self):
+        self.expect_raises(valid.unicode_max_length(1), 'aa')
+
+    def test_unicode_max_length_with_none(self):
+        self.expect_raises(valid.unicode_max_length(1), None)
+
     def test_unicode_or_none_with_none(self):
         self.expect(valid.unicode_or_none, None)
+
+    def test_unicode_or_none_max_length(self):
+        self.expect(valid.unicode_or_none_max_length(1), '')
+
+    def test_unicode_or_none_max_length_over_limit(self):
+        self.expect_raises(valid.unicode_or_none_max_length(1), 'aa')
+
+    def test_unicode_or_none_max_length_with_none(self):
+        self.expect(valid.unicode_or_none_max_length(1), None)

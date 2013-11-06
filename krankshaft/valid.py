@@ -191,24 +191,8 @@ def no_none(validator):
     return new
 
 #
-# validators
-#
-
-int = no_none(int)
-int_or_none = or_none(int)
-
-str = no_none(str)
-str_or_none = or_none(str)
-
-unicode = no_none(unicode)
-unicode_or_none = or_none(unicode)
-
-#
 # validator factories
 #
-
-# TODO max_length factory; ideally used with str/unicode, so make a convenience
-#   wrapper like str_max_length(10) instead of max_length(validator, 10)
 
 def int_range(validator, low, high):
     def int_range_validator(value):
@@ -255,3 +239,36 @@ def list_x_or_more(validator, n):
         n, validator.__name__
     )
     return list_x_or_more_validator
+
+def max_length(validator, n):
+    def max_length_validator(value):
+        value = validator(value)
+        if value is not None and len(value) > n:
+            raise ValueError(
+                'The value is greater than max length %s: %s' % (n, len(value))
+            )
+        return value
+
+    max_length_validator.__name__ = '%s_max_length_%s' \
+        % (validator.__name__, n)
+
+    return max_length_validator
+
+str_max_length = lambda n: max_length(str, n)
+str_or_none_max_length = lambda n: max_length(str_or_none, n)
+
+unicode_max_length = lambda n: max_length(unicode, n)
+unicode_or_none_max_length = lambda n: max_length(unicode_or_none, n)
+
+#
+# validators
+#
+
+int = no_none(int)
+int_or_none = or_none(int)
+
+str = no_none(str)
+str_or_none = or_none(str)
+
+unicode = no_none(unicode)
+unicode_or_none = or_none(unicode)
