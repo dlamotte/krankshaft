@@ -108,22 +108,46 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect(valid.int_or_none, None)
 
     def test_int_range(self):
-        self.expect(valid.int_range(valid.int, 0, 10), 5)
+        self.expect(valid.int_range(0, 10), 5)
+
+    def test_int_range_invalid_value(self):
+        self.expect_raises(valid.int_range(0, 10), None)
 
     def test_int_range_invalid_range_high(self):
-        self.expect_raises(valid.int_range(valid.int, 0, 10), 11)
+        self.expect_raises(valid.int_range(0, 10), 11)
 
     def test_int_range_invalid_range_low(self):
-        self.expect_raises(valid.int_range(valid.int, 0, 10), -1)
+        self.expect_raises(valid.int_range(0, 10), -1)
 
     def test_int_range_invalid_range_coerce_high(self):
-        self.expect_raises(valid.int_range(valid.int, 0, 10), '11')
+        self.expect_raises(valid.int_range(0, 10), '11')
 
     def test_int_range_invalid_range_coerce_low(self):
-        self.expect_raises(valid.int_range(valid.int, 0, 10), '-1')
+        self.expect_raises(valid.int_range(0, 10), '-1')
 
     def test_int_range_invalid_range_invalid_data(self):
-        self.expect_raises(valid.int_range(valid.int, 0, 10), 'a')
+        self.expect_raises(valid.int_range(0, 10), 'a')
+
+    def test_int_or_none_range(self):
+        self.expect(valid.int_or_none_range(0, 10), 5)
+
+    def test_int_or_none_range_invalid_value(self):
+        self.expect(valid.int_or_none_range(0, 10), None)
+
+    def test_int_or_none_range_invalid_range_high(self):
+        self.expect_raises(valid.int_or_none_range(0, 10), 11)
+
+    def test_int_or_none_range_invalid_range_low(self):
+        self.expect_raises(valid.int_or_none_range(0, 10), -1)
+
+    def test_int_or_none_range_invalid_range_coerce_high(self):
+        self.expect_raises(valid.int_or_none_range(0, 10), '11')
+
+    def test_int_or_none_range_invalid_range_coerce_low(self):
+        self.expect_raises(valid.int_or_none_range(0, 10), '-1')
+
+    def test_int_or_none_range_invalid_range_invalid_data(self):
+        self.expect_raises(valid.int_or_none_range(0, 10), 'a')
 
     def test_list_x_or_more_zero(self):
         self.expect_raises(valid.list_x_or_more(valid.int, 1), [])

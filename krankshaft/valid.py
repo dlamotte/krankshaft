@@ -216,20 +216,20 @@ def no_none(validator):
 # validator factories
 #
 
-def int_range(validator, low, high):
-    def int_range_validator(value):
+def range(validator, low, high):
+    def range_validator(value):
         value = validator(value)
-        if not (low <= value <= high):
+        if value is not None and not (low <= value <= high):
             raise ValueError(
                 'The value is not within the range %s <= %s <= %s'
                 % (low, value, high)
             )
         return value
 
-    int_range_validator.__name__ = validator.__name__ + '_range_%s_to_%s' \
+    range_validator.__name__ = validator.__name__ + '_range_%s_to_%s' \
         % (low, high)
 
-    return int_range_validator
+    return range_validator
 
 def list_x_or_more(validator, n):
     if n < 1:
@@ -275,6 +275,9 @@ def max_length(validator, n):
         % (validator.__name__, n)
 
     return max_length_validator
+
+int_range = lambda low, high: range(int, low, high)
+int_or_none_range = lambda low, high: range(int_or_none, low, high)
 
 str_max_length = lambda n: max_length(str, n)
 str_or_none_max_length = lambda n: max_length(str_or_none, n)
