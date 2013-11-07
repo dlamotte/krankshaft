@@ -49,7 +49,7 @@ VQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxMy0xMS0wN1QwOTo1OToxNy0wNjowMI3IBukAAAAASUVO
 RK5CYII=
 '''.splitlines()))))
 
-class Fake(models.Model):
+class Valid(models.Model):
     #id = models.AutoField()
     big_integer = models.BigIntegerField()
     boolean = models.BooleanField()
@@ -493,9 +493,9 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
     def field(self, name, model=False):
         kws = {}
         if model:
-            kws['model'] = Fake
+            kws['model'] = Valid
         return self.expecter.from_field(
-            Fake._meta.get_field_by_name(name)[0],
+            Valid._meta.get_field_by_name(name)[0],
             **kws
         )
 
