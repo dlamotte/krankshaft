@@ -65,6 +65,7 @@ class API(object):
     defaults_dispatch = {
         'auth': True,
         'error': None,
+        'methods': None,
         'only': False,
         'throttle': True,
         'throttle_suffix': None,
@@ -248,6 +249,16 @@ class API(object):
             if opts['only']:
                 return view(request, *args, **kwargs)
 
+            if opts['methods'] is not None \
+               and request.method not in opts['methods'] \
+               and request.method.lower() not in opts['methods']:
+                return self.response(request, 405,
+                    Allow=', '.join([
+                        method.upper()
+                        for method in opts['methods']
+                    ])
+                )
+
             auth = self.Auth if opts['auth'] is True else opts['auth']
             throttle = None
             if auth:
@@ -414,6 +425,7 @@ class API(object):
             auth: only authed requests get through (default: True)
                 optionally pass in Auth subclass
             error: message to use in case of unhandled exception
+            methods: HTTP methods to allow through (default: all)
             only: only wrap the method to provide
                 .abort()/unhandled-exception support
             throttle: rate-limit clients (default: True)

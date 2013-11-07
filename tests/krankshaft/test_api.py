@@ -370,6 +370,15 @@ class APITest(TestCaseNoDB):
         self.assertEquals(data['exception'], "KeyError: 'key'")
         self.assertTrue(data['traceback'])
 
+    def test_method_get(self):
+        response = self.client.get('/only-post/')
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response['Allow'], 'POST')
+
+    def test_method_post(self):
+        response = self.client.post('/only-post/')
+        self.assertEqual(response.status_code, 200)
+
     def test_redirect(self):
         request = self.make_request()
         for code in (301, 302):
@@ -459,6 +468,7 @@ class APITest(TestCaseNoDB):
             url('^deny-decorator-only-manual/$',
                 self.api(only=True)(self.view_auth_manual)
             ),
+            url('^only-post/$', self.api(self.view_serialize_payload, methods=('POST', ))),
             url('^serialize-payload/$', self.api(self.view_serialize_payload)),
             url('^throttle/$',
                 self.api(self.view_serialize_payload, throttle=ThrottleOne)
