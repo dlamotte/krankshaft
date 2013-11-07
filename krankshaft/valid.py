@@ -6,10 +6,16 @@ define an expected structure and clean incoming data based on that structure.
 
 To write a validator, you need only be able to write a function that raises
 ValueError with a valuable message on data that is not valid.  Then using
-expect(), you can reuse that function to properly valid more complex data
+expect(), you can reuse that function to properly validate more complex data
 structures.  If a value is valid, but needs transformation (ie: '1' -> 1,
 convert from string 1 to integer 1) simply return the cleaned value from the
-function.
+function.  A simple validator looks like this:
+
+    def validator(value, expect):
+        ... raise ValueError if there are issues
+        ... if you need to recall expect on a new structure, then:
+        ...     expect(expected, newvalue)
+        return value
 
 Ideally, you can simply use something like this:
 
@@ -43,9 +49,32 @@ from . import util
 from .exceptions import ExpectedIssue, KrankshaftError, ValueIssue
 from django.core import validators
 from django.core.exceptions import ValidationError
+from django.core.files import File
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.utils import dateparse
+
+class ExpecterHelper(object):
+    '''
+    This helper encapsulates the ability to recursively call expect from within
+    a validator.
+
+    Meant to be used exactly like the except function but allows access to
+    the entire expecter.
+
+        expect = ExpecterHelper(self, depth, opts)
+        expect(expected, data)
+    '''
+    def __init__(self, expecter, depth, opts):
+        self.depth = depth
+        self.expecter = expecter
+        self.opts = opts
+
+    def __call__(self, expected, data):
+        return self.expect(expected, data, depth=self.depth, **self.opts)
+
+    def __getattr__(self, name):
+        return getattr(self.expecter, name)
 
 class Expecter(object):
     '''
@@ -141,6 +170,7 @@ class Expecter(object):
     As for tuple's, they behave just like lists.
     '''
     ExpectedIssue = ExpectedIssue
+    ExpecterHelper = ExpecterHelper
     ValueIssue = ValueIssue
 
     defaults = {
@@ -177,14 +207,7 @@ class Expecter(object):
 
         if hasattr(expected, '__call__'):
             try:
-                if getattr(expected, 'needs_expecter', False):
-                    data = expected(self, data,
-                        depth=depth + [expected.__name__],
-                        opts=opts
-                    )
-
-                else:
-                    data = expected(data)
+                data = expected(data, self.ExpecterHelper(self, depth, opts))
 
             except ValueError as exc:
                 raise self.ValueIssue(
@@ -192,7 +215,7 @@ class Expecter(object):
                         self.depthstr(depth),
                         expected,
                         data,
-                        str(exc),
+                        __builtins__['str'](exc),
                     )
                 )
 
@@ -277,7 +300,7 @@ class Expecter(object):
             for i, value in enumerate(data):
                 try:
                     clean.append(self.expect(expected[0], value,
-                        depth=depth + [str(i)]
+                        depth=depth + [__builtins__['str'](i)]
                     ))
                 except self.ValueIssue as exc:
                     errors.extend(exc.args)
@@ -286,7 +309,7 @@ class Expecter(object):
             for i, (cleaner, d) in enumerate(zip(expected, data)):
                 try:
                     clean.append(self.expect(cleaner, d,
-                        depth=depth + [str(i)]
+                        depth=depth + [__builtins__['str'](i)]
                     ))
                 except self.ValueIssue as exc:
                     errors.extend(exc.args)
@@ -311,8 +334,9 @@ class Expecter(object):
         '''
         return tuple(self.expect_list(expected, data, depth, opts))
 
-    def from_field(self, field):
-        validator = self.field_to_validator[field]
+    def from_field(self, field, model=None):
+        # TODO require model if foreignkey/m2m field
+        validator = self.field_to_validator[field.__class__]
 
         if not field.null:
             validator = no_none(validator)
@@ -323,7 +347,7 @@ class Expecter(object):
                 for value, display in field.choices
             ]))
 
-        if hasattr(field, 'max_length'):
+        if hasattr(field, 'max_length') and field.max_length:
             validator = max_length(validator, field.max_length)
 
         if field.validators:
@@ -351,49 +375,52 @@ class Expecter(object):
         return opts
 
 #
-# validator function markers
-#
-
-def expecterfunction(function):
-    '''
-    Expose the expecter to the validator.
-
-        @expecterfunction
-        def validator(expecter, data, depth, opts):
-            ...
-
-    '''
-    function.needs_expecter = True
-    return function
-
-#
 # validator helpers
 #
 
-def or_none(validator):
-    '''or_none(__builtins__.int) -> int_or_none_validator
-
-    Given a function that returns ValueError when the given value is invalid,
-    wrap it in such a way that it will properly handle being given None and
-    return None.
-    '''
-    new = lambda value: None if value is None else validator(value)
-    new.__name__ = validator.__name__ + '_or_none'
-    return new
-
 def no_none(validator):
-    '''or_none(__builtins__.int) -> int_no_none_validator
+    '''or_none(__builtins__['int']) -> int_no_none_validator
 
     Given a function that returns ValueError when the given value is invalid,
     wrap it in such a way that it will properly handle being given None and
     raise ValueError.
     '''
-    def new(value):
+    def no_none_validator(value, expect):
         if value is None:
             raise ValueError('%s does not accept None' % validator.__name__)
+        return validator(value, expect)
+    return wraps(no_none_validator, validator, '_no_none')
+
+def or_none(validator):
+    '''or_none(__builtins__['int']) -> int_or_none_validator
+
+    Given a function that returns ValueError when the given value is invalid,
+    wrap it in such a way that it will properly handle being given None and
+    return None.
+    '''
+    def or_none_validator(value, expect):
+        return None if value is None else validator(value, expect)
+    return wraps(or_none_validator, validator, '_or_none')
+
+def primitive(validator):
+    '''primitive(int) -> int
+
+    Upgrade a primitive validator to a validator that accepts the expect
+    argument.
+    '''
+    def primitive_validator(value, expect):
         return validator(value)
-    new.__name__ = validator.__name__ + '_no_none'
-    return new
+
+    return wraps(primitive_validator, validator)
+
+def wraps(wrapper, wrapped, suffix='', prefix=''):
+    '''wraps(wrapper, validator)
+
+    Wrap a validator in another validator.
+    '''
+    wrapper.__name__ = prefix + wrapped.__name__ + suffix
+
+    return wrapper
 
 #
 # validator factories
@@ -405,47 +432,43 @@ def choice(validator, choices):
     Wrap validator that also validates the returned value is in the list of
     valid choices.
     '''
-    def choice_validator(value):
-        value = validator(value)
+    def choice_validator(value, expect):
+        value = validator(value, expect)
         if value is not None and value not in choices:
             raise ValueError('The value is not a valid choice: %s' % value)
         return value
 
-    choice_validator.__name__ = validator.__name__ + '_choices'
-
-    return choice_validator
+    return wraps(choice_validator, validator, '_choices')
 
 def csv(validator, separator=','):
     '''csv(valid.int) -> int_csv
 
     Wrap validator so that it validates a list separated by commas.
     '''
-    @expecterfunction
-    def csv_validator(expecter, data, depth, opts):
-        data = str(data) # validate data is a str (not None)
+    def csv_validator(data, expect):
+        data = str_or_none(data, expect) # validate data is a str (not None)
 
-        clean = expecter.expect(
-            [validator],
-            [member for member in data.split(',') if member],
-            depth=depth,
-            **opts
-        )
-        return ','.join([
-            str(member)
-            for member in clean
-        ])
+        if data is not None:
+            clean = expect(
+                [validator],
+                [member for member in data.split(',') if member],
+            )
+            return ','.join([
+                str(member, expect)
+                for member in clean
+            ])
 
-    csv_validator.__name__ = validator.__name__ + '_csv'
+        return data
 
-    return csv_validator
+    return wraps(csv_validator, validator, '_csv')
 
 def django_validator(validator, *validators):
     '''django_validator(valid.str, *field.validators) -> django_validator
 
     Use django validators as extra validation to a value.
     '''
-    def django_validator_validator(value):
-        value = validator(value)
+    def django_validator_validator(value, expect):
+        value = validator(value, expect)
 
         if value is not None:
             for django_is_valid in validators:
@@ -456,10 +479,7 @@ def django_validator(validator, *validators):
 
         return value
 
-    django_validator_validator.__name__ = \
-        validator.__name__ + '_django_validator'
-
-    return django_validator_validator
+    return wraps(django_validator_validator, validator, '_django_validator')
 
 def list_n_or_more(validator, n):
     '''list_n_or_more(valid.int, 1) -> list_1_or_more_int
@@ -472,30 +492,28 @@ def list_n_or_more(validator, n):
             'list_n_or_more only accepts values >= 1, not %s' % n
         )
 
-    @expecterfunction
-    def list_n_or_more_validator(expecter, data, depth, opts):
+    def list_n_or_more_validator(data, expect):
         clean = None
         errors = []
         try:
-            clean = expecter.expect([validator], data, depth=depth, **opts)
-        except expecter.ValueIssue as exc:
+            clean = expect([validator], data)
+        except expect.ValueIssue as exc:
             errors.extend(exc.args)
 
         if clean is not None and len(clean) < n:
             errors.append(
                 '%s: Expected list with %s or more elements, saw %s'
-                % (expecter.depthstr(depth), n, len(data))
+                % (expect.depthstr(expect.depth), n, len(data))
             )
 
         if errors:
-            raise expecter.ValueIssue(*errors)
+            raise expect.ValueIssue(*errors)
 
         return clean
 
-    list_n_or_more_validator.__name__ = 'list_%s_or_more_%s' % (
-        n, validator.__name__
+    return wraps(list_n_or_more_validator, validator,
+        prefix='list_%s_or_more_' % n
     )
-    return list_n_or_more_validator
 
 def max_length(validator, n):
     '''max_length(valid.str, 20) -> str_max_length_20
@@ -503,18 +521,15 @@ def max_length(validator, n):
     Wrap a validator that also validates the returned value is less than the
     given max length.
     '''
-    def max_length_validator(value):
-        value = validator(value)
+    def max_length_validator(value, expect):
+        value = validator(value, expect)
         if value is not None and len(value) > n:
             raise ValueError(
                 'The value is greater than max length %s: %s' % (n, len(value))
             )
         return value
 
-    max_length_validator.__name__ = '%s_max_length_%s' \
-        % (validator.__name__, n)
-
-    return max_length_validator
+    return wraps(max_length_validator, validator, '_max_length_%s' % n)
 
 def range(validator, low, high):
     '''range(valid.int, 0, 10) -> int_range_0_to_10
@@ -524,8 +539,8 @@ def range(validator, low, high):
 
     You can create an unbounded range by using None as either bound.
     '''
-    def range_validator(value):
-        value = validator(value)
+    def range_validator(value, expect):
+        value = validator(value, expect)
         if value is not None and not (
             low <= value <= high
             if low is not None and high is not None
@@ -538,10 +553,7 @@ def range(validator, low, high):
             )
         return value
 
-    range_validator.__name__ = validator.__name__ + '_range_%s_to_%s' \
-        % (low, high)
-
-    return range_validator
+    return wraps(range_validator, validator, '_range_%s_to_%s' % (low, high))
 
 float_range = lambda low, high: range(float, low, high)
 float_or_none_range = lambda low, high: range(float_or_none, low, high)
@@ -559,36 +571,36 @@ unicode_or_none_max_length = lambda n: max_length(unicode_or_none, n)
 # primitive validators
 #
 
-float = no_none(__builtins__['float'])
-float_or_none = or_none(__builtins__['float'])
+float = no_none(primitive(__builtins__['float']))
+float_or_none = or_none(primitive(__builtins__['float']))
 
-int = no_none(__builtins__['int'])
-int_csv = csv(int)
-int_or_none = or_none(__builtins__['int'])
-int_csv_or_none = or_none(int_csv)
+int = no_none(primitive(__builtins__['int']))
+int_csv = no_none(csv(int))
+int_or_none = or_none(primitive(__builtins__['int']))
+int_csv_or_none = csv(int)
 
-str = no_none(__builtins__['str'])
-str_or_none = or_none(__builtins__['str'])
+str = no_none(primitive(__builtins__['str']))
+str_or_none = or_none(primitive(__builtins__['str']))
 
-unicode = no_none(__builtins__['unicode'])
-unicode_or_none = or_none(__builtins__['unicode'])
+unicode = no_none(primitive(__builtins__['unicode']))
+unicode_or_none = or_none(primitive(__builtins__['unicode']))
 
 #
 # complex validators
 #
 
-def bool_or_none(value):
+def bool_or_none(value, expect):
     '''bool_or_none('yes') -> True
 
     Take a truthy/falsey string and make it a boolean.
     '''
     truthy = ('1', 'true', 'yes')
-    str_or_none_lower = lambda s: str(s).lower() if s is not None else None
-    str_or_none_lower.__name__ = 'str_or_none_lower'
+    def str_or_none_lower(value, expect):
+        return str(value, expect).lower() if value is not None else None
     value = choice(
         str_or_none_lower,
         ('0', 'false', 'no', 'null') + truthy
-    )(value)
+    )(value, expect)
 
     if value is None:
         return None
@@ -596,8 +608,8 @@ def bool_or_none(value):
         return value in truthy
 bool = no_none(bool_or_none)
 
-def date_or_none(value):
-    value = str_or_none(value)
+def date_or_none(value, expect):
+    value = str_or_none(value, expect)
 
     if value is not None:
         clean = dateparse.parse_date(value)
@@ -608,8 +620,8 @@ def date_or_none(value):
     return value
 date = no_none(date_or_none)
 
-def datetime_or_none(value):
-    value = str_or_none(value)
+def datetime_or_none(value, expect):
+    value = str_or_none(value, expect)
 
     if value is not None:
         clean = dateparse.parse_datetime(value)
@@ -620,18 +632,46 @@ def datetime_or_none(value):
     return value
 datetime = no_none(datetime_or_none)
 
+def django_file_or_none(value, expect):
+    if value is not None and not isinstance(value, File):
+        raise ValueError('No django file found')
+    return value
+django_file = no_none(django_file_or_none)
+
+def django_image_or_none(value, expect):
+    value = django_file_or_none(value, expect)
+
+    if value is not None:
+        try:
+            from PIL import Image
+            image = Image.open(value)
+            image.load()
+
+            value.seek(0)
+
+            image = Image.open(value)
+            image.verify()
+
+            value.seek(0)
+
+        except Exception:
+            raise ValueError('No valid django image (file) found')
+
+    return value
+django_image = no_none(django_image_or_none)
+
 email = django_validator(str, validators.validate_email)
 email_or_none = django_validator(str_or_none, validators.validate_email)
 
-def slug_or_none(value):
-    value = str_or_none(value)
+def slug_or_none(value, expect):
+    value = str_or_none(value, expect)
     if value is not None:
         value = slugify(value)
     return value
 slug = no_none(slug_or_none)
 
-def time_or_none(value):
-    value = str_or_none(value)
+def time_or_none(value, expect):
+    value = str_or_none(value, expect)
 
     if value is not None:
         clean = dateparse.parse_time(value)
@@ -653,12 +693,12 @@ Expecter.field_to_validator = {
     models.DateTimeField                : datetime_or_none,
     models.DecimalField                 : str_or_none,
     models.EmailField                   : email_or_none,
-#    models.FileField                    : file_or_none, # TODO
-#    models.FilePathField                : filepath_or_none, # TODO
+    models.FileField                    : django_file_or_none,
+    models.FilePathField                : str_or_none,
     models.FloatField                   : float_or_none,
     models.GenericIPAddressField        : str_or_none,
     models.IPAddressField               : str_or_none,
-#    models.ImageField                   : image_or_none, # TODO
+    models.ImageField                   : django_image_or_none,
     models.IntegerField                 : int_or_none_range(-2147483648, 2147483647),
     models.NullBooleanField             : bool_or_none,
     models.PositiveIntegerField         : int_or_none_range(0, 2147483647),

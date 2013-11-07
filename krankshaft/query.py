@@ -205,7 +205,7 @@ class DjangoQuery(Query):
 
             elif lookup == 'isnull':
                 try:
-                    value = valid.bool(value)
+                    value = valid.bool(value, None)
                 except ValueError as exc:
                     errors.append(
                         'An isnull lookup requires a truthy/falsey value: %s'
