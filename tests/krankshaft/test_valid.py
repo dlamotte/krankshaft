@@ -101,7 +101,7 @@ class Valid(models.Model):
     foreign3 = models.ForeignKey(ValidForeign3)
     one_to_one = models.OneToOneField(ValidOneToOne)
     many_to_many = models.ManyToManyField(ValidManyToMany)
-    many_to_many_blank = models.ManyToManyField(ValidManyToMany, blank=True)
+    many_to_many_blank = models.ManyToManyField(ValidManyToMany, blank=True, related_name='many_to_many_blank')
 
 class BaseExpecterTest(TestCaseNoDB):
     def expect(self, expected, data, clean=None, **opts):
