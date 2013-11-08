@@ -334,9 +334,19 @@ class Expecter(object):
         '''
         return tuple(self.expect_list(expected, data, depth, opts))
 
-    def from_field(self, field, model=None):
-        # TODO require model if foreignkey/m2m field
-        validator = self.field_to_validator[field.__class__]
+    def from_field(self, field):
+        if field.__class__ in (
+            models.ForeignKey,
+            models.OneToOneField,
+            models.ManyToManyField
+        ):
+            other_field = field
+            while hasattr(other_field, 'rel') and other_field.rel:
+                other_field = other_field.rel.get_related_field()
+            validator = self.field_to_validator[other_field.__class__]
+
+        else:
+            validator = self.field_to_validator[field.__class__]
 
         if not field.null:
             validator = no_none(validator)
@@ -352,6 +362,13 @@ class Expecter(object):
 
         if field.validators:
             validator = django_validator(validator, *field.validators)
+
+        if field.__class__ is models.ManyToManyField:
+            if field.blank:
+                return [validator]
+
+            else:
+                return list_n_or_more(validator, 1)
 
         return validator
 

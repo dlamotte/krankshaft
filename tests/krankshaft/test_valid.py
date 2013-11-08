@@ -49,6 +49,21 @@ VQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxMy0xMS0wN1QwOTo1OToxNy0wNjowMI3IBukAAAAASUVO
 RK5CYII=
 '''.splitlines()))))
 
+class ValidForeign(models.Model):
+    name = models.CharField(max_length=20)
+
+class ValidForeign2(models.Model):
+    name = models.CharField(max_length=20)
+
+class ValidForeign3(models.Model):
+    foreign2 = models.ForeignKey(ValidForeign2, primary_key=True)
+
+class ValidOneToOne(models.Model):
+    name = models.CharField(max_length=20)
+
+class ValidManyToMany(models.Model):
+    name = models.CharField(max_length=20)
+
 class Valid(models.Model):
     #id = models.AutoField()
     big_integer = models.BigIntegerField()
@@ -80,6 +95,13 @@ class Valid(models.Model):
     text = models.TextField()
     time = models.TimeField()
     url = models.URLField()
+
+    foreign = models.ForeignKey(ValidForeign)
+    foreign_nullable = models.ForeignKey(ValidForeign2, null=True)
+    foreign3 = models.ForeignKey(ValidForeign3)
+    one_to_one = models.OneToOneField(ValidOneToOne)
+    many_to_many = models.ManyToManyField(ValidManyToMany)
+    many_to_many_blank = models.ManyToManyField(ValidManyToMany, blank=True)
 
 class BaseExpecterTest(TestCaseNoDB):
     def expect(self, expected, data, clean=None, **opts):
@@ -631,8 +653,32 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
     def test_field_float(self):
         self.expect(self.field('float'), '1.1', 1.1)
 
+    def test_field_foreign(self):
+        self.expect(self.field('foreign'), 1)
+
+    def test_field_foreign_with_none(self):
+        self.expect_raises(self.field('foreign'), None)
+
+    def test_field_foreign_nullable(self):
+        self.expect(self.field('foreign_nullable'), None)
+
+    def test_field_foreign3(self):
+        self.expect(self.field('foreign3'), 1)
+
     def test_field_generic_ip_address(self):
         self.expect(self.field('generic_ip_address'), '192.168.1.1')
+
+    def test_field_many_to_many(self):
+        self.expect(self.field('many_to_many'), [1, 2, 3])
+
+    def test_field_many_to_many_at_least_one(self):
+        self.expect_raises(self.field('many_to_many'), [])
+
+    def test_field_many_to_many_invalid(self):
+        self.expect_raises(self.field('many_to_many'), ['a', 'b', 'c'])
+
+    def test_field_many_to_many_blank(self):
+        self.expect(self.field('many_to_many_blank'), [])
 
     def test_field_ip_address(self):
         self.expect(self.field('ip_address'), '192.168.1.1')
@@ -674,6 +720,9 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
 
     def test_field_null_boolean_with_none(self):
         self.expect(self.field('null_boolean'), None)
+
+    def test_field_one_to_one(self):
+        self.expect(self.field('one_to_one'), 1)
 
     def test_field_positive_integer_0(self):
         self.expect(self.field('positive_integer'), 0)
