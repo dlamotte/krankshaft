@@ -170,7 +170,7 @@ class API(object):
             )
         else:
             if headers:
-                raise KrankshaftError(
+                raise self.Error(
                     'Cannot pass headers with given a response'
                 )
             raise self.Abort(status_or_response)
@@ -464,12 +464,12 @@ class API(object):
         if url is not None:
             if not isinstance(url, basestring) \
                and not (isinstance(url, (list, tuple)) and 1 <= len(url) <= 4):
-                raise KrankshaftError(
+                raise self.Error(
                     'register called with invalid url param: %r' % (url, )
                 )
 
             if hasattr(view, 'urls'):
-                raise KrankshaftError(
+                raise self.Error(
                     'Will not register a resource to a url '
                     'if it has an urls attribute'
                 )
