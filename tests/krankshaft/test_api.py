@@ -590,13 +590,13 @@ class APIResourceTest(TestCaseNoDB):
         @api
         class ResourceWithURLs(object):
             def router(self, request, *args, **kwargs):
-                return api.response(request, 200, 'with-urls')
+                return self.api.response(request, 200, 'with-urls')
 
             @property
             def urls(self):
                 from django.conf.urls import patterns
                 return patterns('',
-                    (r'^resource/with-urls/$', api.wrap(self.router)),
+                    (r'^resource/with-urls/$', self.api.wrap(self.router)),
                 )
 
         @api(url='^view/with-url/$')

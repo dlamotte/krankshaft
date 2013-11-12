@@ -403,6 +403,10 @@ class API(object):
         '''
         api = self
 
+        # annotate wrapping api onto the class so it may be used without a prior
+        # outside reference
+        klass_to_wrap.api = api
+
         class Helper(object):
             __doc__ = klass_to_wrap.__doc__
             instance = klass_to_wrap()
