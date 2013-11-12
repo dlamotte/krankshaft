@@ -550,6 +550,16 @@ class APIResourceTest(TestCaseNoDB):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, 'with-urls')
 
+    def test_response_with_urls_with_router_reuse_single(self):
+        response = self.client.get('/api/v1/resource/with-urls-with-router-reuse/1/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, '{"single": 1}')
+
+    def test_response_with_urls_with_router_reuse_set(self):
+        response = self.client.get('/api/v1/resource/with-urls-with-router-reuse/set/1;2;3;4;5;6/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, '{"set": [1, 2, 3, 4, 5, 6]}')
+
     def test_view_with_url(self):
         response = self.client.get('/api/v1/view/with-url/')
         self.assertEqual(response.status_code, 200)
@@ -597,6 +607,36 @@ class APIResourceTest(TestCaseNoDB):
                 from django.conf.urls import patterns
                 return patterns('',
                     (r'^resource/with-urls/$', self.api.wrap(self.router)),
+                )
+
+        @api
+        class ResourceWithURLsWithRouterReuse(object):
+            def get(self, request, id):
+                return self.api.serialize(request, 200, {
+                    'single': int(id)
+                })
+
+            def get_set(self, request, idset):
+                return self.api.serialize(request, 200, {
+                    'set': [int(id) for id in idset.split(';')]
+                })
+
+            def route_set(self, request, *args, **kwargs):
+                return self.api.route({
+                    'get': self.get_set,
+                }, request, args, kwargs)
+
+            def route_single(self, request, *args, **kwargs):
+                return self.api.route({
+                    'get': self.get,
+                }, request, args, kwargs)
+
+            @property
+            def urls(self):
+                from django.conf.urls import patterns
+                return patterns('',
+                    (r'^resource/with-urls-with-router-reuse/(?P<id>\d+)/$', self.api.wrap(self.route_single)),
+                    (r'^resource/with-urls-with-router-reuse/set/(?P<idset>\d[\d;]*)/$', self.api.wrap(self.route_set)),
                 )
 
         @api(url='^view/with-url/$')

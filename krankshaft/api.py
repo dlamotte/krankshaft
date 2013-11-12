@@ -536,19 +536,34 @@ class API(object):
 
                 def post(self, request):
                     ...
+
+        If obj is a dictionary, you can specify the handling of each method
+        specifically.
+
+            methods = {
+                'post': self.post,
+            }
+            return api.route(methods, request, args, kwargs)
+
         '''
         # assume its an instance of a class
         if hasattr(obj, 'route'):
             return obj.route(request, args, kwargs)
 
-        avail = {
-            method: getattr(obj, method, None)
-            for method in self.methods
-        }
+        if isinstance(obj, dict):
+            avail = obj.copy()
+            for method in self.methods:
+                avail.setdefault(method, None)
+
+        else:
+            avail = {
+                method: getattr(obj, method, None)
+                for method in self.methods
+            }
 
         # assume its a class, route to a specific method
         method = request.method.lower()
-        view = avail[method]
+        view = avail.get(method)
 
         if not view:
             return self.response(request, 405,
