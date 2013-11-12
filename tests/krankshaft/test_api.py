@@ -581,7 +581,7 @@ class APIResourceTest(TestCaseNoDB):
                 return api.response(request, 201, str(int(id) * 10))
 
         class ResourceWithRouter(object):
-            def route(self, request, *args, **kwargs):
+            def route(self, request, args, kwargs):
                 return self.response(request, *args, **kwargs)
 
             def response(self, request, *args, **kwargs):

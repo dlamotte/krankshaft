@@ -24,6 +24,9 @@ import urlparse
 
 log = logging.getLogger(__name__)
 
+# TODO resolve('/api/path/...') -> resource?
+# TODO reverse(model) -> '/api/path/...'
+
 class API(object):
     '''
     Create a new API.
@@ -406,8 +409,8 @@ class API(object):
             klass = klass_to_wrap
 
             def __call__(self, request, *args, **kwargs):
-                view = lambda *args, **kwargs: \
-                    api.route(self.instance, *args, **kwargs)
+                view = lambda request, *args, **kwargs: \
+                    api.route(self.instance, request, args, kwargs)
                 return api.dispatch(view, opts, request, *args, **kwargs)
 
             def __getattr__(self, name):
@@ -503,8 +506,8 @@ class API(object):
 
         return self.hook_response(response)
 
-    def route(self, obj, request, *args, **kwargs):
-        '''route(obj, request, *args, **kwargs) -> response
+    def route(self, obj, request, args, kwargs):
+        '''route(obj, request, args, kwargs) -> response
 
         Route a request to given obj.  If a route method exists on the object,
         simply forward control to it.  Otherwise, do a simple routing method
@@ -517,7 +520,7 @@ class API(object):
                 def all(self, request, *args, **kwargs):
                     ...
 
-                def route(self, request, *args, **kwargs):
+                def route(self, request, args, kwargs):
                     return self.all(request, *args, **kwargs)
 
         Example with default routing:
@@ -532,7 +535,7 @@ class API(object):
         '''
         # assume its an instance of a class
         if hasattr(obj, 'route'):
-            return obj.route(request, *args, **kwargs)
+            return obj.route(request, args, kwargs)
 
         avail = {
             method: getattr(obj, method, None)
