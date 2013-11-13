@@ -25,8 +25,8 @@ Ideally, you can simply use something like this:
         clean = api.expect(
             {
                 'count': valid.int,
-                'name': valid.str_max_length(100),
-                'text': valid.str,
+                'name': valid.string_max_length(100),
+                'text': valid.string,
             },
             data
         )
@@ -215,7 +215,7 @@ class Expecter(object):
                         self.depthstr(depth),
                         expected,
                         data,
-                        __builtins__['str'](exc),
+                        str(exc),
                     )
                 )
 
@@ -300,7 +300,7 @@ class Expecter(object):
             for i, value in enumerate(data):
                 try:
                     clean.append(self.expect(expected[0], value,
-                        depth=depth + [__builtins__['str'](i)]
+                        depth=depth + [str(i)]
                     ))
                 except self.ValueIssue as exc:
                     errors.extend(exc.args)
@@ -309,7 +309,7 @@ class Expecter(object):
             for i, (cleaner, d) in enumerate(zip(expected, data)):
                 try:
                     clean.append(self.expect(cleaner, d,
-                        depth=depth + [__builtins__['str'](i)]
+                        depth=depth + [str(i)]
                     ))
                 except self.ValueIssue as exc:
                     errors.extend(exc.args)
@@ -444,7 +444,7 @@ def wraps(wrapper, wrapped, suffix='', prefix=''):
 #
 
 def choice(validator, choices):
-    '''choice(valid.str, ['a', 'b', 'c']) -> str_choices
+    '''choice(valid.string, ['a', 'b', 'c']) -> string_choices
 
     Wrap validator that also validates the returned value is in the list of
     valid choices.
@@ -463,7 +463,7 @@ def csv(validator, separator=','):
     Wrap validator so that it validates a list separated by commas.
     '''
     def csv_validator(data, expect):
-        data = str_or_none(data, expect) # validate data is a str (not None)
+        data = string_or_none(data, expect)
 
         if data is not None:
             clean = expect(
@@ -471,7 +471,7 @@ def csv(validator, separator=','):
                 [member for member in data.split(',') if member],
             )
             return ','.join([
-                str(member, expect)
+                str(member)
                 for member in clean
             ])
 
@@ -480,7 +480,7 @@ def csv(validator, separator=','):
     return wraps(csv_validator, validator, '_csv')
 
 def django_validator(validator, *validators):
-    '''django_validator(valid.str, *field.validators) -> django_validator
+    '''django_validator(valid.string, *field.validators) -> django_validator
 
     Use django validators as extra validation to a value.
     '''
@@ -533,7 +533,7 @@ def list_n_or_more(validator, n):
     )
 
 def max_length(validator, n):
-    '''max_length(valid.str, 20) -> str_max_length_20
+    '''max_length(valid.string, 20) -> string_max_length_20
 
     Wrap a validator that also validates the returned value is less than the
     given max length.
@@ -578,11 +578,8 @@ float_or_none_range = lambda low, high: range(float_or_none, low, high)
 int_range = lambda low, high: range(int, low, high)
 int_or_none_range = lambda low, high: range(int_or_none, low, high)
 
-str_max_length = lambda n: max_length(str, n)
-str_or_none_max_length = lambda n: max_length(str_or_none, n)
-
-unicode_max_length = lambda n: max_length(unicode, n)
-unicode_or_none_max_length = lambda n: max_length(unicode_or_none, n)
+string_max_length = lambda n: max_length(string, n)
+string_or_none_max_length = lambda n: max_length(string_or_none, n)
 
 #
 # primitive validators
@@ -596,11 +593,13 @@ int_csv = no_none(csv(int))
 int_or_none = or_none(primitive(__builtins__['int']))
 int_csv_or_none = csv(int)
 
-str = no_none(primitive(__builtins__['str']))
-str_or_none = or_none(primitive(__builtins__['str']))
+def string_or_none(value, expect):
+    if value is not None:
+        if not isinstance(value, basestring):
+            raise ValueError('Expected string, saw: %s' % type(value))
 
-unicode = no_none(primitive(__builtins__['unicode']))
-unicode_or_none = or_none(primitive(__builtins__['unicode']))
+    return value
+string = no_none(string_or_none)
 
 #
 # complex validators
@@ -613,7 +612,7 @@ def bool_or_none(value, expect):
     '''
     truthy = ('1', 'true', 'yes')
     def str_or_none_lower(value, expect):
-        return str(value, expect).lower() if value is not None else None
+        return str(value).lower() if value is not None else None
     value = choice(
         str_or_none_lower,
         ('0', 'false', 'no', 'null') + truthy
@@ -626,7 +625,7 @@ def bool_or_none(value, expect):
 bool = no_none(bool_or_none)
 
 def date_or_none(value, expect):
-    value = str_or_none(value, expect)
+    value = string_or_none(value, expect)
 
     if value is not None:
         clean = dateparse.parse_date(value)
@@ -638,7 +637,7 @@ def date_or_none(value, expect):
 date = no_none(date_or_none)
 
 def datetime_or_none(value, expect):
-    value = str_or_none(value, expect)
+    value = string_or_none(value, expect)
 
     if value is not None:
         clean = dateparse.parse_datetime(value)
@@ -677,18 +676,18 @@ def django_image_or_none(value, expect):
     return value
 django_image = no_none(django_image_or_none)
 
-email = django_validator(str, validators.validate_email)
-email_or_none = django_validator(str_or_none, validators.validate_email)
+email = django_validator(string, validators.validate_email)
+email_or_none = django_validator(string_or_none, validators.validate_email)
 
 def slug_or_none(value, expect):
-    value = str_or_none(value, expect)
+    value = string_or_none(value, expect)
     if value is not None:
         value = slugify(value)
     return value
 slug = no_none(slug_or_none)
 
 def time_or_none(value, expect):
-    value = str_or_none(value, expect)
+    value = string_or_none(value, expect)
 
     if value is not None:
         clean = dateparse.parse_time(value)
@@ -704,17 +703,17 @@ Expecter.field_to_validator = {
     models.AutoField                    : int_or_none_range(1, 2147483647),
     models.BigIntegerField              : int_or_none_range(-9223372036854775808, 9223372036854775807),
     models.BooleanField                 : bool_or_none,
-    models.CharField                    : str_or_none,
+    models.CharField                    : string_or_none,
     models.CommaSeparatedIntegerField   : int_csv_or_none,
     models.DateField                    : date_or_none,
     models.DateTimeField                : datetime_or_none,
-    models.DecimalField                 : str_or_none,
+    models.DecimalField                 : string_or_none,
     models.EmailField                   : email_or_none,
     models.FileField                    : django_file_or_none,
-    models.FilePathField                : str_or_none,
+    models.FilePathField                : string_or_none,
     models.FloatField                   : float_or_none,
-    models.GenericIPAddressField        : str_or_none,
-    models.IPAddressField               : str_or_none,
+    models.GenericIPAddressField        : string_or_none,
+    models.IPAddressField               : string_or_none,
     models.ImageField                   : django_image_or_none,
     models.IntegerField                 : int_or_none_range(-2147483648, 2147483647),
     models.NullBooleanField             : bool_or_none,
@@ -722,7 +721,7 @@ Expecter.field_to_validator = {
     models.PositiveSmallIntegerField    : int_or_none_range(0, 32767),
     models.SlugField                    : slug_or_none,
     models.SmallIntegerField            : int_or_none_range(-32768, 32767),
-    models.TextField                    : str_or_none,
+    models.TextField                    : string_or_none,
     models.TimeField                    : time_or_none,
-    models.URLField                     : str_or_none,
+    models.URLField                     : string_or_none,
 }

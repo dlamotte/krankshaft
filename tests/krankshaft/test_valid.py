@@ -214,10 +214,10 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect(valid.bool_or_none, None)
 
     def test_choices(self):
-        self.expect(valid.choice(valid.str, ('a', 'b', 'c')), 'a')
+        self.expect(valid.choice(valid.string, ('a', 'b', 'c')), 'a')
 
     def test_choices_not_valid_choice(self):
-        self.expect_raises(valid.choice(valid.str, ('a', 'b', 'c')), 'd')
+        self.expect_raises(valid.choice(valid.string, ('a', 'b', 'c')), 'd')
 
     def test_date(self):
         self.expect(valid.date, '2013-11-06', date(2013, 11, 06))
@@ -296,12 +296,12 @@ class ValidatorsTest(BaseExpecterTest):
 
     def test_django_validator(self):
         from django.core.validators import validate_email
-        validator = valid.django_validator(valid.str, validate_email)
+        validator = valid.django_validator(valid.string, validate_email)
         self.expect(validator, 'me@somewhere.com')
 
     def test_django_validator_invalid(self):
         from django.core.validators import validate_email
-        validator = valid.django_validator(valid.str, validate_email)
+        validator = valid.django_validator(valid.string, validate_email)
         self.expect_raises(validator, 'mesomewhere.com')
 
     def test_email(self):
@@ -445,32 +445,32 @@ class ValidatorsTest(BaseExpecterTest):
     def test_slug_or_none_with_none(self):
         self.expect(valid.slug_or_none, None)
 
-    def test_str(self):
-        self.expect(valid.str, 'key')
+    def test_string(self):
+        self.expect(valid.string, 'key')
 
-    def test_str_with_none(self):
-        self.expect_raises(valid.str, None)
+    def test_string_with_none(self):
+        self.expect_raises(valid.string, None)
 
-    def test_str_max_length(self):
-        self.expect(valid.str_max_length(1), '')
+    def test_string_max_length(self):
+        self.expect(valid.string_max_length(1), '')
 
-    def test_str_max_length_over_limit(self):
-        self.expect_raises(valid.str_max_length(1), 'aa')
+    def test_string_max_length_over_limit(self):
+        self.expect_raises(valid.string_max_length(1), 'aa')
 
-    def test_str_max_length_with_none(self):
-        self.expect_raises(valid.str_max_length(1), None)
+    def test_string_max_length_with_none(self):
+        self.expect_raises(valid.string_max_length(1), None)
 
-    def test_str_or_none_with_none(self):
-        self.expect(valid.str_or_none, None)
+    def test_string_or_none_with_none(self):
+        self.expect(valid.string_or_none, None)
 
-    def test_str_or_none_max_length(self):
-        self.expect(valid.str_or_none_max_length(1), '')
+    def test_string_or_none_max_length(self):
+        self.expect(valid.string_or_none_max_length(1), '')
 
-    def test_str_or_none_max_length_over_limit(self):
-        self.expect_raises(valid.str_or_none_max_length(1), 'aa')
+    def test_string_or_none_max_length_over_limit(self):
+        self.expect_raises(valid.string_or_none_max_length(1), 'aa')
 
-    def test_str_or_none_max_length_with_none(self):
-        self.expect(valid.str_or_none_max_length(1), None)
+    def test_string_or_none_max_length_with_none(self):
+        self.expect(valid.string_or_none_max_length(1), None)
 
     def test_time(self):
         self.expect(valid.time, '15:53:21', time(15, 53, 21))
@@ -484,32 +484,6 @@ class ValidatorsTest(BaseExpecterTest):
     def test_time_or_none_with_none(self):
         self.expect(valid.time_or_none, None)
 
-    def test_unicode(self):
-        self.expect(valid.unicode, 'key')
-
-    def test_unicode_with_none(self):
-        self.expect_raises(valid.unicode, None)
-
-    def test_unicode_max_length(self):
-        self.expect(valid.unicode_max_length(1), '')
-
-    def test_unicode_max_length_over_limit(self):
-        self.expect_raises(valid.unicode_max_length(1), 'aa')
-
-    def test_unicode_max_length_with_none(self):
-        self.expect_raises(valid.unicode_max_length(1), None)
-
-    def test_unicode_or_none_with_none(self):
-        self.expect(valid.unicode_or_none, None)
-
-    def test_unicode_or_none_max_length(self):
-        self.expect(valid.unicode_or_none_max_length(1), '')
-
-    def test_unicode_or_none_max_length_over_limit(self):
-        self.expect_raises(valid.unicode_or_none_max_length(1), 'aa')
-
-    def test_unicode_or_none_max_length_with_none(self):
-        self.expect(valid.unicode_or_none_max_length(1), None)
 
 class ValidatorsFromFieldTest(BaseExpecterTest):
     def field(self, name, model=False):
@@ -582,7 +556,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('char_max_20_choices'), None)
 
     def test_field_csv_integer_integer(self):
-        self.expect(self.field('csv_integer'), 1, '1')
+        self.expect_raises(self.field('csv_integer'), 1)
 
     def test_field_csv_integer_string_integer(self):
         self.expect(self.field('csv_integer'), '1')
