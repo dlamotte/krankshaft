@@ -132,11 +132,13 @@ class API(object):
             **opts
         )
 
-    def abort(self, request, status_or_response, **headers):
+    def abort(self, response_or_request, status=None, **headers):
         '''abort(request, 400)
 
         Abort current execution with HTTP Response with given status.  If a
         response is given, abort current execution with given response.
+
+            api.abort(api.response(request, 400))
 
         Example:
 
@@ -154,16 +156,23 @@ class API(object):
                 ...
                 api.abort(request, 400)
         '''
-        if isinstance(status_or_response, int):
-            raise self.Abort(
-                self.response(request, status=status_or_response, **headers)
-            )
-        else:
+        if hasattr(response_or_request, 'status_code'):
+            # response
             if headers:
                 raise self.Error(
                     'Cannot pass headers with given a response'
                 )
-            raise self.Abort(status_or_response)
+            raise self.Abort(response_or_request)
+
+        else:
+            # request
+            if status is None:
+                raise TypeError(
+                    'abort() requires a status when passed a response'
+                )
+            raise self.Abort(
+                self.response(response_or_request, status, **headers)
+            )
 
     def auth(self, request, Auth=None):
         '''auth(request) -> auth

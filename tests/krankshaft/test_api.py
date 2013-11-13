@@ -63,7 +63,7 @@ class APITest(TestCaseNoDB):
 
         response = self.api.response(request, 401)
         try:
-            self.api.abort(request, response)
+            self.api.abort(response)
         except Exception, exc:
             self.assertEquals(response, exc.response)
 
@@ -390,7 +390,7 @@ class APITest(TestCaseNoDB):
         request = self.make_request()
         for code in (301, 302):
             try:
-                self.api.abort(request, self.api.redirect(request, code, '/'))
+                self.api.abort(self.api.redirect(request, code, '/'))
             except Exception, e:
                 self.assertEquals(e.response.status_code, code)
                 self.assertEquals(e.response['Location'], '/')
