@@ -606,6 +606,17 @@ class API(object):
 
         return view
 
+    def url_name(self, name):
+        '''url_name(myview.__name__) -> 'api_v1_myview'
+
+        Define how URLs should be named.
+        '''
+        n = 'api_'
+        if self.name:
+            n += self.name + '_'
+        n += name
+        return n
+
     @property
     def urls(self):
         '''
@@ -619,7 +630,7 @@ class API(object):
         urlpatterns = []
         for view, url in self.registry:
             if url:
-                urlitem = (url, view)
+                urlitem = (url, view, None, self.url_name(view.__name__))
                 if not isinstance(url, basestring):
                     urlitem = (url[0], view) + url[1:]
 

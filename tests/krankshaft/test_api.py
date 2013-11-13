@@ -540,6 +540,12 @@ class APIResourceTest(TestCaseNoDB):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.content, '10')
 
+    def test_response_with_name(self):
+        from django.core.urlresolvers import reverse
+        response = self.client.get(reverse(self.api.url_name('view_name')))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, 'view_name')
+
     def test_response_with_router(self):
         response = self.client.get('/resource/with-router/')
         self.assertEqual(response.status_code, 200)
@@ -646,6 +652,10 @@ class APIResourceTest(TestCaseNoDB):
         @api(url=('^view/with-url/(?P<id>\d+)/$', {'extra': 'option'}))
         def view_with_url(request, id, extra=None):
             return api.response(request, 200, 'view-with-url-%s-%s' % (id, extra))
+
+        @api(url='^view/name/$')
+        def view_name(request):
+            return api.response(request, 200, 'view_name')
 
         return self.make_urlconf(
             url('^resource/nomethods/$', api(ResourceNoMethods)),
