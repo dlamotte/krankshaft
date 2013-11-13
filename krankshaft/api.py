@@ -156,15 +156,7 @@ class API(object):
                 ...
                 api.abort(request, 400)
         '''
-        if hasattr(response_or_request, 'status_code'):
-            # response
-            if headers:
-                raise self.Error(
-                    'Cannot pass headers with given a response'
-                )
-            raise self.Abort(response_or_request)
-
-        else:
+        if hasattr(response_or_request, 'method'):
             # request
             if status is None:
                 raise TypeError(
@@ -173,6 +165,14 @@ class API(object):
             raise self.Abort(
                 self.response(response_or_request, status, **headers)
             )
+
+        else:
+            # response
+            if headers:
+                raise self.Error(
+                    'Cannot pass headers with given a response'
+                )
+            raise self.Abort(response_or_request)
 
     def auth(self, request, Auth=None):
         '''auth(request) -> auth
