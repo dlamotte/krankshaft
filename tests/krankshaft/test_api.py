@@ -546,6 +546,11 @@ class APIResourceTest(TestCaseNoDB):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, 'view_name')
 
+    def test_response_with_name_with_api_reverse(self):
+        response = self.client.get(self.api.reverse('view_name'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, 'view_name')
+
     def test_response_with_router(self):
         response = self.client.get('/resource/with-router/')
         self.assertEqual(response.status_code, 200)

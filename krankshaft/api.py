@@ -504,6 +504,37 @@ class API(object):
 
         return self.hook_response(response)
 
+    def reverse(self, name, *args, **kwargs):
+        '''reverse('myendpoint') -> '/url/for/endpoint/'
+
+        Simply a shortcut for using url_name() on a name so it maps easily to
+        the name of the endpoint you've decorated with the api.
+
+            api = API('v1')
+
+            @api(url='^endpoint/$')
+            def endpoint(request):
+                ...
+
+            urlpatterns = patterns('',
+                url('^api/', include(api.urls)),
+            )
+
+            api.reverse('endpoint') -> '/api/v1/endpoint/'
+
+        Of course you can use the standard way by doing:
+
+            from django.core.urlresolvers import reverse
+            reverse(api.url_name('endpoint'))
+
+        Or hardcode it (which isn't very DRY, but...):
+
+            reverse('api_v1_endpoint')
+
+        '''
+        from django.core.urlresolvers import reverse
+        return reverse(self.url_name(name), *args, **kwargs)
+
     def route(self, obj, request, args, kwargs):
         '''route(obj, request, args, kwargs) -> response
 
