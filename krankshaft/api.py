@@ -1,10 +1,4 @@
-# TODO features
-#   - caching
-#
-#   - automatic model resources/serialization/...
-#       - form validation... does it even make sense at API level?
-#       - pagination (is this only related to objects, seems like it...)?
-
+# TODO caching?
 # TODO stop **headers crap, make a headers object and pass that around...
 # TODO transactions
 
