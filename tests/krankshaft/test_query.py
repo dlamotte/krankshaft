@@ -47,7 +47,7 @@ class QueryTest(TestCaseNoDB):
 
 class DjangoQueryTest(QueryTest):
     def apply_assert(self, qs, **opts):
-        queryset = self.Query(qs, opts).apply(Fake.objects.all())
+        queryset, meta = self.Query(qs, opts).apply(Fake.objects.all())
         self.assertNotEqual(queryset, None)
         return queryset
 
@@ -176,6 +176,36 @@ class DjangoQueryTest(QueryTest):
         queryset = self.apply_assert({'limit': '0'}, max_limit=20)
         self.assertEqual(queryset.query.low_mark, 0)
         self.assertEqual(queryset.query.high_mark, 20)
+
+    def test_apply_meta_page_0(self):
+        queryset, meta = \
+            self.Query({'limit': '10', 'char_indexed': 'value'}) \
+            .apply(Fake.objects.all())
+
+        assert meta['next'] == '?char_indexed=value&limit=10&offset=10'
+        assert meta['previous'] is None
+
+    def test_apply_meta_page_1(self):
+        queryset, meta = \
+            self.Query({'offset': '10', 'limit': '10', 'char_indexed': 'value'}) \
+            .apply(Fake.objects.all())
+
+        assert meta['next'] == '?char_indexed=value&limit=10&offset=20'
+        assert meta['previous'] == '?char_indexed=value&limit=10&offset=0'
+
+    def test_apply_offset(self):
+        queryset = self.apply_assert({'limit': '1', 'offset': '1'})
+        self.assertEqual(queryset.query.low_mark, 1)
+        self.assertEqual(queryset.query.high_mark, 2)
+
+    def test_apply_offset_invalid(self):
+        self.apply_raises({'limit': '1', 'offset': 'a'})
+
+    def test_apply_offset_invalid_negative(self):
+        self.apply_raises({'limit': '1', 'offset': '-1'})
+
+    def test_apply_offset_gt_max(self):
+        self.apply_raises({'limit': '1', 'offset': '21'}, max_offset=20)
 
     def test_apply_only(self):
         queryset = self.apply_assert({'only': 'char_unindexed,char_indexed'})

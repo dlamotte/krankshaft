@@ -24,8 +24,8 @@ import urlparse
 
 log = logging.getLogger(__name__)
 
-# TODO resolve('/api/path/...') -> resource?
-# TODO reverse(model) -> '/api/path/...'
+# TODO resolve('/api/path/...') -> resource, args, kwargs
+# TODO reverse(resource, args, kwargs) -> '/api/path/...'
 
 class API(object):
     '''

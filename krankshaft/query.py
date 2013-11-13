@@ -141,13 +141,14 @@ class DjangoQuery(Query):
         'default_only': None,
         'default_order_by': None,
         'max_limit': None,
+        'max_offset': None,
         'only_allow_related': False,
         'ordering': Indexed,
         'ordering_allow_related': False,
     }
 
     def apply(self, query, **opts):
-        '''apply(queryset) -> new queryset with query
+        '''apply(queryset) -> new queryset with query, meta
 
         Apply query to queryset.
 
@@ -164,7 +165,7 @@ class DjangoQuery(Query):
         filter_uses_index = False
         used_filter = False
         for name, value in self.qs.iteritems():
-            if name in ('defer', 'limit', 'only', 'order_by'):
+            if name in ('defer', 'limit', 'offset', 'only', 'order_by'):
                 continue
 
             used_filter = True
@@ -224,6 +225,7 @@ class DjangoQuery(Query):
 
         defer = self.qs.get('defer', opts['default_defer'])
         limit = self.qs.get('limit', opts['default_limit'])
+        offset = self.qs.get('offset', 0)
         only = self.qs.get('only', opts['default_only'])
         order_by = self.qs.get('order_by', opts['default_order_by'])
 
@@ -290,9 +292,23 @@ class DjangoQuery(Query):
         if limit:
             try:
                 limit = int(limit)
+                if offset:
+                    offset = int(offset)
             except ValueError:
-                errors.append('You must specify an integer for limit')
+                errors.append('You must specify an integer for limit/offset')
             else:
+                if offset:
+                    if opts['max_offset'] and offset > opts['max_offset']:
+                        errors.append(
+                            'Your offset is above the maximum allowed: %s '
+                            % opts['max_offset']
+                        )
+                        offset = 0
+
+                    elif offset < 0:
+                        errors.append('A offset must be positive')
+                        offset = 0
+
                 if opts['max_limit'] and limit > opts['max_limit']:
                     errors.append(
                         'Your limit is above the maximum allowed: %s'
@@ -302,18 +318,18 @@ class DjangoQuery(Query):
                 elif limit == 0:
                     limit = opts['max_limit']
                     if limit:
-                        query = query[:limit]
+                        query = query[offset : offset + limit]
 
                 elif limit < 0:
                     errors.append('A limit must be positive')
 
                 else:
-                    query = query[:limit]
+                    query = query[offset : offset + limit]
 
         if errors:
             raise self.Issues(*errors)
 
-        return query
+        return query, self.make_meta(limit, offset)
 
     def get_field(self, model, accessor):
         field = None
@@ -327,6 +343,34 @@ class DjangoQuery(Query):
             first = False
 
         return field
+
+    def make_meta(self, limit, offset):
+        meta = {
+            'limit': limit,
+            'next': None,
+            'offset': offset,
+            'previous': None,
+        }
+
+        if limit is None or offset is None:
+            return meta
+
+        base = ''
+        for name, value in self.qs.iteritems():
+            if name in ('limit', 'offset'):
+                continue
+
+            base += '&' if base else '?'
+            base += name + '=' + value
+
+        base += '&' if base else '?'
+
+        meta['next'] = base + 'limit=%s&offset=%s' % (limit, offset + limit)
+        if offset >= limit:
+            meta['previous'] = \
+                base + 'limit=%s&offset=%s' % (limit, offset - limit)
+
+        return meta
 
     def parse_field(self, name):
         parsed = []
