@@ -448,6 +448,15 @@ class ValidatorsTest(BaseExpecterTest):
     def test_string(self):
         self.expect(valid.string, 'key')
 
+    def test_string_fail_dict(self):
+        self.expect_raises(valid.string, {})
+
+    def test_string_fail_integer(self):
+        self.expect_raises(valid.string, 1)
+
+    def test_string_fail_list(self):
+        self.expect_raises(valid.string, [])
+
     def test_string_with_none(self):
         self.expect_raises(valid.string, None)
 
