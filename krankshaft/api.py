@@ -1,6 +1,5 @@
 # TODO caching?
 # TODO stop **headers crap, make a headers object and pass that around...
-# TODO transactions
 
 from . import util
 from .auth import Auth
@@ -17,9 +16,6 @@ import traceback
 import urlparse
 
 log = logging.getLogger(__name__)
-
-# TODO resolve('/api/path/...') -> resource, args, kwargs
-# TODO reverse(resource, args, kwargs) -> '/api/path/...'
 
 class API(object):
     '''
