@@ -10,6 +10,7 @@ import urlparse
 
 # TODO: Accept: */* dumps: no method to_urlencoded
 #       maybe only consider serializers we have a method for?
+# TODO use 406 Not Acceptable in case where we cannot serialize
 
 class Serializer(object):
     '''
