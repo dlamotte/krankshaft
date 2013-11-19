@@ -62,16 +62,15 @@ class ExpecterHelper(object):
     Meant to be used exactly like the except function but allows access to
     the entire expecter.
 
-        expect = ExpecterHelper(self, depth, opts)
+        expect = ExpecterHelper(self, opts)
         expect(expected, data)
     '''
-    def __init__(self, expecter, depth, opts):
-        self.depth = depth
+    def __init__(self, expecter, opts):
         self.expecter = expecter
         self.opts = opts
 
     def __call__(self, expected, data):
-        return self.expect(expected, data, depth=self.depth, **self.opts)
+        return self.expect(expected, data, **self.opts)
 
     def __getattr__(self, name):
         return getattr(self.expecter, name)
@@ -183,51 +182,30 @@ class Expecter(object):
     def __init__(self, **opts):
         self.opts = self.options(opts, self.defaults)
 
-    def depthstr(self, depth):
-        '''
-        An internal helper to format the depth list to be user readable.
-        '''
-        depthstr = 'depth@root'
-        if depth:
-            depthstr = 'depth@' + '.'.join(depth)
-
-        return depthstr
-
-    def expect(self, expected, data, depth=None, **opts):
+    def expect(self, expected, data, **opts):
         '''expect({'key': valid.int}, {'key': '1'}) -> {'key': 1}
 
         Clean and validate a given data structure using an expected structure.
 
         You may pass valid options directly here via opts.
         '''
-        if depth is None:
-            opts = self.options(opts, self.opts)
-
-        depth = depth or []
+        opts = self.options(opts, self.opts)
 
         if hasattr(expected, '__call__'):
             try:
-                data = expected(data, self.ExpecterHelper(self, depth, opts))
+                data = expected(data, self.ExpecterHelper(self, opts))
 
             except ValueError as exc:
-                raise self.ValueIssue(
-                    '%s: expected %r, saw %r with ValueError: %s' % (
-                        self.depthstr(depth),
-                        expected,
-                        data,
-                        str(exc),
-                    )
-                )
+                raise self.ValueIssue([self.format_exc(exc)])
 
             else:
                 return data
 
         if expected.__class__ is not data.__class__:
-            raise self.ValueIssue('%s: expected %r, saw %r' % (
-                self.depthstr(depth),
-                expected.__class__,
-                data.__class__,
-            ))
+            raise self.ValueIssue([
+                'Unexpected type, expected %s: %s'
+                % (expected.__class__, data.__class__)
+            ])
 
         method = getattr(self, 'expect_' + expected.__class__.__name__, None)
         if not method:
@@ -236,22 +214,19 @@ class Expecter(object):
                 % expected.__class__
             )
 
-        return method(expected, data,
-            depth=depth + [expected.__class__.__name__],
-            opts=opts
-        )
+        return method(expected, data, opts=opts)
 
-    def expect_dict(self, expected, data, depth, opts):
+    def expect_dict(self, expected, data, opts):
         '''
         Dictionary data structure handling with expect().
 
         You probably dont want to use this directly.
         '''
-        expected_keys = set(expected.keys())
-        data_keys = set(data.keys())
         clean = {}
+        data_keys = set(data.keys())
+        errors = {}
+        expected_keys = set(expected.keys())
 
-        errors = []
         if (
             not (opts['ignore_extra_keys'] and opts['ignore_missing_keys'])
             and expected_keys != data_keys
@@ -259,40 +234,33 @@ class Expecter(object):
             extra_keys = data_keys - expected_keys
             missing_keys = expected_keys - data_keys
             if not opts['ignore_extra_keys'] and extra_keys:
-                errors.append('%s: Extra keys, %s' % (
-                    self.depthstr(depth),
-                    ', '.join(list(extra_keys)),
-                ))
+                errors.setdefault('__nonkeyerrors__', []) \
+                    .append('Extra keys: %s' % ', '.join(list(extra_keys)))
 
             if not opts['ignore_missing_keys'] and missing_keys:
-                errors.append('%s: Missing keys: %s' % (
-                    self.depthstr(depth),
-                    ', '.join(list(missing_keys)),
-                ))
+                errors.setdefault('__nonkeyerrors__', []) \
+                    .append('Missing keys: %s' % ', '.join(list(missing_keys)))
 
         for key in (expected_keys & data_keys):
             try:
-                clean[key] = self.expect(expected[key], data[key],
-                    depth=depth + [key],
-                    **opts
-                )
+                clean[key] = self.expect(expected[key], data[key], **opts)
 
             except self.ValueIssue as exc:
-                errors.extend(exc.args)
+                errors[key] = exc.errors
 
         if errors:
-            raise self.ValueIssue(*errors)
+            raise self.ValueIssue(errors)
 
         return clean
 
-    def expect_list(self, expected, data, depth, opts):
+    def expect_list(self, expected, data, opts):
         '''
         List data structure handling with expect().
 
         You probably dont want to use this directly.
         '''
         clean = []
-        errors = []
+        errors = {}
 
         if len(expected) == 0:
             return data[:]
@@ -300,42 +268,44 @@ class Expecter(object):
         elif len(expected) == 1:
             for i, value in enumerate(data):
                 try:
-                    clean.append(self.expect(expected[0], value,
-                        depth=depth + [str(i)],
-                        **opts
-                    ))
+                    clean.append(self.expect(expected[0], value, **opts))
                 except self.ValueIssue as exc:
-                    errors.extend(exc.args)
+                    errors[i] = exc.errors
 
         elif len(expected) == len(data):
             for i, (cleaner, d) in enumerate(zip(expected, data)):
                 try:
-                    clean.append(self.expect(cleaner, d,
-                        depth=depth + [str(i)],
-                        **opts
-                    ))
+                    clean.append(self.expect(cleaner, d, **opts))
                 except self.ValueIssue as exc:
-                    errors.extend(exc.args)
+                    errors[i] = exc.errors
 
         else:
-            errors.append('%s: Expected list of length %s, saw %s' % (
-                self.depthstr(depth),
-                len(expected),
-                len(data),
-            ))
+            errors['__nonindexerrors__'] = [
+                'Expected list of length %s, saw %s' % (
+                    len(expected),
+                    len(data),
+                )
+            ]
 
         if errors:
-            raise self.ValueIssue(*errors)
+            raise self.ValueIssue(errors)
 
         return clean
 
-    def expect_tuple(self, expected, data, depth, opts):
+    def expect_tuple(self, expected, data, opts):
         '''
         Tuple data structure handling with expect().
 
         You probably dont want to use this directly.
         '''
-        return tuple(self.expect_list(expected, data, depth, opts))
+        return tuple(self.expect_list(expected, data, opts))
+
+    def format_exc(self, exc):
+        '''format_exc(exception) -> '...'
+
+        Format an exception to be encoded into the error data structure.
+        '''
+        return str(exc)
 
     def from_field(self, field):
         '''from_field(model.field.field) -> validator or expected data structure
@@ -519,20 +489,21 @@ def list_n_or_more(validator, n):
 
     def list_n_or_more_validator(data, expect):
         clean = None
-        errors = []
+        errors = {}
         try:
             clean = expect([validator], data)
         except expect.ValueIssue as exc:
-            errors.extend(exc.args)
+            errors = exc.errors
 
         if clean is not None and len(clean) < n:
-            errors.append(
-                '%s: Expected list with %s or more elements, saw %s'
-                % (expect.depthstr(expect.depth), n, len(data))
-            )
+            errors.setdefault('__nonindexerrors__', []) \
+                .append(
+                    'Expected list with %s or more elements, saw %s'
+                    % (n, len(data))
+                )
 
         if errors:
-            raise expect.ValueIssue(*errors)
+            raise expect.ValueIssue(errors)
 
         return clean
 

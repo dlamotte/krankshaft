@@ -18,11 +18,12 @@ class ResolveError(KrankshaftError):
     pass
 
 class ValueIssue(KrankshaftError):
+    def __init__(self, errors):
+        self.errors = errors
+
     def __str__(self):
-        return '\n'.join([
-            self.args[0],
-            '\n'.join([
-                '%s: %s' % (self.__class__.__name__, arg)
-                for arg in self.args[1:]
-            ]),
-        ])
+        from pprint import pformat
+        msg = pformat(self.errors)
+        if '\n' in msg:
+            msg = '\n' + msg
+        return msg
