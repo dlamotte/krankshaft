@@ -175,7 +175,7 @@ class DjangoQuery(Query):
             field = self.get_field(model, accessor)
 
             if not filter_uses_index:
-                filter_uses_index = field.db_index
+                filter_uses_index = self.is_indexed(field)
 
             if opts['filter'] is not self.Any \
                and opts['filter'] is not self.Indexed \
@@ -270,7 +270,7 @@ class DjangoQuery(Query):
                 field = self.get_field(model, accessor)
 
                 if not ordering_uses_index:
-                    ordering_uses_index = field.db_index
+                    ordering_uses_index = self.is_indexed(field)
 
                 if opts['ordering'] is not self.Any \
                    and opts['ordering'] is not self.Indexed \
@@ -344,6 +344,9 @@ class DjangoQuery(Query):
 
         return field
 
+    def is_indexed(self, field):
+        return field.db_index or field.primary_key
+
     def make_meta(self, limit, offset):
         meta = {
             'limit': limit,
@@ -388,3 +391,24 @@ class DjangoQuery(Query):
                 parsed.append(part)
 
         return tuple(parsed), lookup
+
+    def without(self, *names):
+        copy = super(DjangoQuery, self).without(*names)
+
+        if 'defer' in names:
+            copy.opts['default_defer'] = None
+
+        if 'limit' in names:
+            copy.opts['default_limit'] = None
+            copy.opts['max_limit'] = None
+
+        if 'only' in names:
+            copy.opts['default_only'] = None
+
+        if 'order_by' in names:
+            copy.opts['default_order_by'] = None
+
+        if 'offset' in names:
+            copy.opts['max_offset'] = None
+
+        return copy

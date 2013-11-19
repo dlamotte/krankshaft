@@ -169,6 +169,20 @@ Or setup urls and multiple routes:
                 url(r'^model/(?P<id>\d+)/$', api.wrap(self.route_object)),
             ])
 
+Or (instead of building your own) use the one built in:
+
+    from krankshaft.resource import DjangoModelResource
+    from app.models import Model
+    from app.api import api
+
+    @api
+    class ModelResource(DjangoModelResource):
+        model = Model
+
+This resource implementation should be ideal for _most_ situations, but you're
+free to reimplement parts or all of it.  It's meant only as a pattern you can
+follow and is not required by the framework at all.
+
 what works
 ==========
 
@@ -178,7 +192,9 @@ what works
 * throttling
 * resource routing
 * query application (ie: `?field__startswith=something&order_by=field`)
+  with pagination support
 * deep data validation
+* Django ORM based Model Resource (with model serialization/deserialization)
 
 TODO
 ====
@@ -187,6 +203,4 @@ TODO
 * caching
 * easy-etag support
 * flask support
-* model serialization (but first, some helpers)
 * OAuth (1 and 2)
-* pagination

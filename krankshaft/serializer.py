@@ -133,11 +133,15 @@ class Serializer(object):
             return self.deserialize(request.body, content_type, **opts)
 
     def from_urlencoded(self, body, **opts):
-        return urlparse.parse_qs(
+        data = urlparse.parse_qs(
             body,
             keep_blank_values=True,
             strict_parsing=True
         )
+        return {
+            key: value[-1]
+            for key, value in data.iteritems()
+        }
 
     def from_multipart_form_data(self, request, **opts):
         from django.utils.datastructures import MultiValueDict
@@ -153,7 +157,10 @@ class Serializer(object):
             data = MultiValueDict()
             data.update(post)
             data.update(files)
-            return data
+            return {
+                key: value
+                for key, value in data.iteritems()
+            }
         except Exception, e:
             raise ValueError(str(e))
 

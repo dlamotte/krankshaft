@@ -3,7 +3,8 @@
 
 from . import util
 from .auth import Auth
-from .exceptions import Abort, KrankshaftError, InvalidOptions, ValueIssue
+from .exceptions import \
+    Abort, KrankshaftError, InvalidOptions, ResolveError, ValueIssue
 from .serializer import Serializer
 from .throttle import Throttle
 from .util import Annotate
@@ -51,6 +52,7 @@ class API(object):
     Error = KrankshaftError
     Expecter = Expecter
     InvalidOptions = InvalidOptions
+    ResolveError = ResolveError
     Serializer = Serializer
     Throttle = Throttle
     ValueIssue = property(lambda self: self.expecter.ValueIssue)
@@ -90,6 +92,7 @@ class API(object):
         '''
         self.debug = debug
         self.error = error or self.error
+        self.loaded = False
         self.name = name
         self.registry = []
 
@@ -190,7 +193,7 @@ class API(object):
     def deserialize(self, request, abortable=True):
         '''deserialize(request) -> query, body
 
-        Read in the request data to a native data structures.
+        Read in the request data to native data structures.
         '''
         from django.utils.datastructures import MultiValueDict
 
@@ -217,13 +220,6 @@ class API(object):
                 )
             else:
                 data = {}
-
-            if not isinstance(data, MultiValueDict):
-                # fake out returned value to ensure same interface
-                data = MultiValueDict({
-                    key: value if isinstance(value, (tuple, list)) else [value]
-                    for key, value in data.iteritems()
-                })
 
             return (query, data)
         except ValueError:
@@ -292,7 +288,18 @@ class API(object):
         except Exception:
             return self.handle_exc(request, error=opts['error'])
 
-    def expect(self, expected, data):
+    def endpoint(self, name):
+        '''endpoint(myview.__name__) -> 'api_v1_myview'
+
+        Define how URLs should be named.
+        '''
+        n = 'api_'
+        if self.name:
+            n += self.name + '_'
+        n += name
+        return n
+
+    def expect(self, expected, data, **opts):
         '''expect({'key': int}, {'key': '1'}) -> clean data
 
         In the above scenario, the returned data is:
@@ -310,7 +317,7 @@ class API(object):
 
         Raises ValueIssue when expected does not properly validate data.
         '''
-        return self.expecter.expect(expected, data)
+        return self.expecter.expect(expected, data, **opts)
 
     def extra(self, **more):
         data = {
@@ -394,6 +401,27 @@ class API(object):
         response['Content-Type'] += '; charset=utf-8'
         return response
 
+    def load(self):
+        '''load()
+
+        Resources need a bit of extra help to know when everything is considered
+        loaded.  When that's the case, the resources can make mappings between
+        eachother using the API registry.  This signals that the registry
+        is fully loaded (typically due to the call to `api.urls`).
+
+        You may use the load routine on your resource to do any finalization
+        before they're wired into the urls.
+        '''
+        if self.loaded:
+            return
+
+        for view in self.registered_views:
+            load = getattr(view, 'load', None)
+            if load:
+                load()
+
+        self.loaded = True
+
     def make_resource_helper(self, klass_to_wrap, opts):
         '''make_resource_helper(klass) -> helper_instance
 
@@ -475,6 +503,101 @@ class API(object):
 
         self.registry.append((view, url))
 
+    @property
+    def registered_resources(self):
+        '''
+        Iterate over the registered resources.
+
+            for resource in api.registered_resources:
+                ...
+
+        Access only the resources without worrying about details of the
+        registry.
+        '''
+        for view in self.registered_views:
+            if inspect.isfunction(view):
+                continue
+            yield view
+
+    @property
+    def registered_views(self):
+        '''
+        Iterate over the registered views.
+
+            for view in api.registered_views:
+                ...
+
+        Access the views without worrying about the registry data structure.
+        '''
+        for view, url in self.registry:
+            yield view
+
+    def resolve(self, paths):
+        '''resolve([path, ...]) -> resource, [1, ...]
+
+        Resolve a URI to an instance as given by the resource pointed to:
+
+            from krankshaft.resource import DjangoModelResource
+
+            @api
+            class MyModel(DjangoModelResource):
+                model = get_model('app', 'MyModel')
+
+            # resource = <instance MyModelResource>
+            # ids = [1]
+            resource, ids = api.resolve(['/api/v1/mymodel/1/'])
+
+        If you're using a resource that adheres to the conventions of krankshaft
+        (like DjangoModelResource) then you can simply do:
+
+            resource.fetch(*ids)
+
+        To retrieve a list of instances for those ids.  This is required for
+        linked URI representations of models to work with resources.
+
+        The assumption is that the URL defines a single capturing expression
+        around the primary key of the model.  In this case, the number 1 is
+        assumably captured as either an argument or a keyword argument (name
+        of the keyword does not matter).
+
+        Order of input paths is preserved on output.  So you can do this:
+
+            resource, ids = api.resolve(paths)
+            for path, id, instance in zip(paths, ids, resource.fetch(*ids)):
+                ...
+
+        And it works as expected.
+        '''
+        from django.core.urlresolvers import Resolver404, resolve
+
+        if not paths:
+            raise self.ResolveError('No paths given to resolve')
+
+        resource = None
+        ids = []
+        for path in paths:
+            try:
+                view, args, kwargs = resolve(path)
+            except Resolver404:
+                view = None
+
+            if not view or not hasattr(view, 'im_self'):
+                raise self.ResolveError(
+                    'Unable to find a resource for path: %s' % path
+                )
+
+            ids.append(args[0] if args else kwargs.values()[0])
+
+            if resource is None:
+                resource = view.im_self
+
+            if resource != view.im_self:
+                raise self.ResolveError(
+                    'Multiple resources found for given paths'
+                )
+
+        return resource, ids
+
     def response(self, request, status, content=None, **headers):
         '''response(request, 200) -> response
 
@@ -512,7 +635,7 @@ class API(object):
     def reverse(self, name, *args, **kwargs):
         '''reverse('myendpoint') -> '/url/for/endpoint/'
 
-        Simply a shortcut for using url_name() on a name so it maps easily to
+        Simply a shortcut for using endpoint() on a name so it maps easily to
         the name of the endpoint you've decorated with the api.
 
             api = API('v1')
@@ -530,7 +653,7 @@ class API(object):
         Of course you can use the standard way by doing:
 
             from django.core.urlresolvers import reverse
-            reverse(api.url_name('endpoint'))
+            reverse(api.endpoint('endpoint'))
 
         Or hardcode it (which isn't very DRY, but...):
 
@@ -538,7 +661,7 @@ class API(object):
 
         '''
         from django.core.urlresolvers import reverse
-        return reverse(self.url_name(name), *args, **kwargs)
+        return reverse(self.endpoint(name), *args, **kwargs)
 
     def route(self, obj, request, args, kwargs):
         '''route(obj, request, args, kwargs) -> response
@@ -642,17 +765,6 @@ class API(object):
 
         return view
 
-    def url_name(self, name):
-        '''url_name(myview.__name__) -> 'api_v1_myview'
-
-        Define how URLs should be named.
-        '''
-        n = 'api_'
-        if self.name:
-            n += self.name + '_'
-        n += name
-        return n
-
     @property
     def urls(self):
         '''
@@ -663,10 +775,12 @@ class API(object):
             url('^api/', include(api.urls))
 
         '''
+        self.load()
+
         urlpatterns = []
         for view, url in self.registry:
             if url:
-                urlitem = (url, view, None, self.url_name(view.__name__))
+                urlitem = (url, view, None, self.endpoint(view.__name__))
                 if not isinstance(url, basestring):
                     urlitem = (url[0], view) + url[1:]
 
@@ -732,6 +846,15 @@ class API(object):
                         *args,
                         **kwargs
                     )
+
+                # propagate these for resolve, if we've wrapped a resource
+                # method, this is the only way we can find our way back to
+                # the original resource (not thrilled with this hacky-ness)
+                try:
+                    for attr in ('im_class', 'im_func', 'im_self'):
+                        setattr(view, attr, getattr(view_or_resource, attr))
+                except AttributeError:
+                    pass
 
             view = self.update_view(view)
             if register:

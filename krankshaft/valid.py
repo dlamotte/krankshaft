@@ -273,7 +273,8 @@ class Expecter(object):
         for key in (expected_keys & data_keys):
             try:
                 clean[key] = self.expect(expected[key], data[key],
-                    depth=depth + [key]
+                    depth=depth + [key],
+                    **opts
                 )
 
             except self.ValueIssue as exc:
@@ -300,7 +301,8 @@ class Expecter(object):
             for i, value in enumerate(data):
                 try:
                     clean.append(self.expect(expected[0], value,
-                        depth=depth + [str(i)]
+                        depth=depth + [str(i)],
+                        **opts
                     ))
                 except self.ValueIssue as exc:
                     errors.extend(exc.args)
@@ -309,7 +311,8 @@ class Expecter(object):
             for i, (cleaner, d) in enumerate(zip(expected, data)):
                 try:
                     clean.append(self.expect(cleaner, d,
-                        depth=depth + [str(i)]
+                        depth=depth + [str(i)],
+                        **opts
                     ))
                 except self.ValueIssue as exc:
                     errors.extend(exc.args)
@@ -335,6 +338,11 @@ class Expecter(object):
         return tuple(self.expect_list(expected, data, depth, opts))
 
     def from_field(self, field):
+        '''from_field(model.field.field) -> validator or expected data structure
+
+        Return a validator or an expected data structure (passable to expect())
+        given a django model field.
+        '''
         if field.__class__ in (
             models.ForeignKey,
             models.OneToOneField,

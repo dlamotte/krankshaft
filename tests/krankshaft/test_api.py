@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from datetime import timedelta
 from django.core.cache import cache
+from django.db import models
 from functools import partial
 from krankshaft import valid
 from krankshaft.api import API as APIBase
@@ -9,10 +10,12 @@ from krankshaft.auth import Auth as AuthBase
 from krankshaft.authn import Authn
 from krankshaft.authz import Authz
 from krankshaft.exceptions import KrankshaftError
+from krankshaft.resource import DjangoModelResource
 from krankshaft.throttle import Throttle
 from tempfile import NamedTemporaryFile
 from tests.base import TestCaseNoDB
 import json
+import pytest
 import sys
 
 class Auth(AuthBase):
@@ -43,6 +46,16 @@ ThrottleOne = partial(
     rate=(1, timedelta(seconds=10))
 )
 
+class FakeAPIMany(models.Model):
+    char_indexed = models.CharField(max_length=20, db_index=True)
+
+class FakeAPI(models.Model):
+    char_indexed = models.CharField(max_length=20, db_index=True)
+    manytomany = models.ManyToManyField(FakeAPIMany)
+
+class FakeAPI2(models.Model):
+    char_indexed = models.CharField(max_length=20, db_index=True)
+
 class APITest(TestCaseNoDB):
     def _pre_setup(self):
         self.api = API('v1')
@@ -70,9 +83,13 @@ class APITest(TestCaseNoDB):
         self.assertRaises(
             KrankshaftError,
             self.api.abort,
-            request,
             response,
             Header=''
+        )
+        self.assertRaises(
+            TypeError,
+            self.api.abort,
+            request
         )
 
     def test_annotate(self):
@@ -495,10 +512,52 @@ class APITest(TestCaseNoDB):
         return self.api.serialize(request, 200, query)
 
 
+@pytest.mark.django_db
 class APIResourceTest(TestCaseNoDB):
     def _pre_setup(self):
         self.api = API('v1')
         super(APIResourceTest, self)._pre_setup()
+
+    def test_django_model_resource_resolve(self):
+        FakeAPI.objects.create(id=1, char_indexed='value1')
+        FakeAPI.objects.create(id=2, char_indexed='value2')
+        FakeAPI.objects.create(id=3, char_indexed='value3')
+        resource, ids = self.api.resolve([
+            '/api/v1/fakeapi/2/',
+            '/api/v1/fakeapi/3/',
+            '/api/v1/fakeapi/1/',
+        ])
+        assert ids == ['2', '3', '1']
+
+        instances = resource.fetch(*ids)
+        assert [
+            instance.pk
+            for instance in instances
+        ] == [2, 3, 1]
+
+    def test_django_model_resource_resolve_many_resources(self):
+        self.assertRaises(self.api.ResolveError, self.api.resolve, [
+            '/api/v1/fakeapi/1/',
+            '/api/v1/fakeapi2/1/',
+        ])
+
+    def test_django_model_resource_resolve_doesnotexist(self):
+        resource, ids = self.api.resolve(['/api/v1/fakeapi/999/'])
+        self.assertRaises(FakeAPI.DoesNotExist, resource.fetch, *ids)
+
+    def test_django_model_resource_resolve_nothing(self):
+        self.assertRaises(self.api.ResolveError, self.api.resolve, [])
+
+    def test_django_model_resource_resolve_not_found(self):
+        self.assertRaises(self.api.ResolveError, self.api.resolve, '/not/a/valid/path/')
+
+    def test_django_model_resource_resolve_non_resource(self):
+        self.assertRaises(self.api.ResolveError, self.api.resolve, '/resource/nomethods/')
+
+    def test_django_model_resource_reverse(self):
+        assert self.api.reverse('fakeapi_list') == '/api/v1/fakeapi/'
+        assert self.api.reverse('fakeapi_single', args=(1,)) == '/api/v1/fakeapi/1/'
+        assert self.api.reverse('fakeapi_set', args=('1;2;3', )) == '/api/v1/fakeapi/set/1;2;3/'
 
     def test_ensure_failure_to_assign_url_with_resource_with_urls(self):
         api = API('v1')
@@ -542,7 +601,7 @@ class APIResourceTest(TestCaseNoDB):
 
     def test_response_with_name(self):
         from django.core.urlresolvers import reverse
-        response = self.client.get(reverse(self.api.url_name('view_name')))
+        response = self.client.get(reverse(self.api.endpoint('view_name')))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, 'view_name')
 
@@ -661,6 +720,14 @@ class APIResourceTest(TestCaseNoDB):
         @api(url='^view/name/$')
         def view_name(request):
             return api.response(request, 200, 'view_name')
+
+        @api
+        class FakeAPIResource(DjangoModelResource):
+            model = FakeAPI
+
+        @api
+        class FakeAPI2Resource(DjangoModelResource):
+            model = FakeAPI2
 
         return self.make_urlconf(
             url('^resource/nomethods/$', api(ResourceNoMethods)),
