@@ -129,7 +129,8 @@ class DjangoModelResource(object):
 
             if hasattr(instance, '_prefetched_objects_cache') \
                and field.name in instance._prefetched_objects_cache:
-                del instance._prefetched_objects_cache[field.name]
+                instance._prefetched_objects_cache[field.name] = \
+                    instances
 
         return instance
 
