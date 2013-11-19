@@ -162,6 +162,16 @@ class ResourceTest(TestCaseNoDB):
         assert response.status_code == 204
         assert response.content == ''
 
+    def test_fetch_invalid_id(self):
+        resource, ids = self.api.resolve([
+            self.api.reverse('modelother_single', args=('invalid',)),
+        ])
+        self.assertRaises(
+            self.api.ValueIssue,
+            resource.fetch,
+            *ids
+        )
+
     def test_get_list(self):
         ModelForeign.objects.create(id=1, char_indexed='value')
         ModelForeign.objects.create(id=2, char_indexed='value2')
@@ -274,6 +284,18 @@ class ResourceTest(TestCaseNoDB):
                     'resource_uri': '/api/v1/modelforeign/3/'
                 },
             ]
+        }
+
+    def test_get_set_invalid_id(self):
+        response = self.client.get(
+            self.api.reverse('modelforeign_set', args=('invalid',))
+        )
+
+        assert response.status_code == 400
+        assert response['Content-Type'] == 'application/json; charset=utf-8'
+        assert json.loads(response.content) == {
+            'error': 'Invalid ID for model ModelForeign',
+            'invalid': [u"invalid literal for int() with base 10: 'invalid'"],
         }
 
     def test_get_set_missing(self):
@@ -612,6 +634,22 @@ class ResourceTest(TestCaseNoDB):
         assert id1.char_indexed == 'setupdate1'
         assert id3.char_indexed == 'setupdate3'
 
+    def test_put_set_invalid_format(self):
+        ModelForeign.objects.create(id=1, char_indexed='value')
+        ModelForeign.objects.create(id=3, char_indexed='value3')
+        response = self.client.put(
+            self.api.reverse('modelforeign_set', args=('1;3',)),
+            json.dumps({}),
+            content_type='application/json'
+        )
+
+        assert response.status_code == 400
+        assert response['Content-Type'] == 'application/json; charset=utf-8'
+        assert json.loads(response.content) == {
+            'error': 'Data format was invalid',
+            'invalid': ["Unexpected type, expected <type 'list'>: <type 'dict'>"],
+        }
+
     def test_put_set_location(self):
         ModelForeign2.objects.create(id=1, char_indexed='value')
         ModelForeign2.objects.create(id=2, char_indexed='value2')
@@ -719,6 +757,28 @@ class ResourceTest(TestCaseNoDB):
         instance = ModelForeign2.objects.get(id=1)
         assert instance.char_indexed == 'updated'
 
+    def test_put_single_invalid_manytomany(self):
+        ModelForeign.objects.create(id=1)
+        Model.objects.create(id=1, foreign_id=1)
+
+        response = self.client.put(
+            self.api.reverse('model_single', args=(1,)),
+            json.dumps({
+                'manytomany': [
+                    '/api/v1/modelforeign/invalid/',
+                ]
+            }),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        assert response['Content-Type'] == 'application/json; charset=utf-8'
+        assert json.loads(response.content) == {
+            'error': 'Supplied data was invalid',
+            'invalid': {
+                'manytomany': ["Unable to resolve related: [u'invalid'], Unexpected resource found: modelforeign (expected modelmany)"]
+            },
+        }
+
     def test_resource_deserialize(self):
         response = self.client.post(
             self.api.reverse('modelmany_list'),
@@ -794,6 +854,9 @@ class ResourceTest(TestCaseNoDB):
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'error': 'Supplied data was invalid',
+            'invalid': {
+                'foreign': ["Unable to resolve related: [u'1'], Unexpected resource found: model (expected modelforeign)"]
+            }
         }
 
     def test_resource_resolve(self):

@@ -60,14 +60,14 @@ class DjangoModelResource(object):
         self.loaded = False
         self.related_lookup_cache = {}
 
-    def clean_id(self, id):
-        '''clean_id(id) -> clean_id
+    def clean_id(self, request, id):
+        '''clean_id(request, id) -> clean_id
 
         Useful in situations where the id may be in an improper format.
 
         For example:
 
-            ids = [self.clean_id(id) for id in '1;2;3;4'.split(';')]
+            ids = [self.clean_id(request, id) for id in '1;2;3;4'.split(';')]
 
         Without `clean_id()`, the id would be a string.  So when we go to check
         to see if we fetched all the proper instances from the database, a check
@@ -76,9 +76,21 @@ class DjangoModelResource(object):
             set(ids) == set([instance.pk for instance in instances])
 
         Would fail simply because '1' (string) != 1 (integer).
+
+        The request argument can be given None, but in this case, you are
+        responsible for handling any raised api.ValueIssue.  If a request is
+        given, this will automatically call `abort()` with an error response.
         '''
-        # TODO handle ValueIssue
-        return self.api.expect(self.expected_pk, id)
+        try:
+            return self.api.expect(self.expected_pk, id)
+        except self.api.ValueIssue as exc:
+            if not request:
+                raise
+
+            self.api.abort(self.api.serialize(request, 400, {
+                'error': 'Invalid ID for model %s' % self.model.__name__,
+                'invalid': exc.errors,
+            }))
 
     def deserialize(self, request, data, instance=None):
         '''deserialize(request, data, instance=instance) -> instance
@@ -93,10 +105,10 @@ class DjangoModelResource(object):
 
         try:
             clean = self.api.expect(self.expected, data, strict_dict=False)
-        except self.api.ValueIssue as e:
+        except self.api.ValueIssue as exc:
             self.api.abort(self.api.serialize(request, 400, {
                 'error': 'Supplied data was invalid',
-                #'invalid': str(e), # TODO make this a data structure...
+                'invalid': exc.errors,
             }))
 
         manytomany = {}
@@ -156,9 +168,15 @@ class DjangoModelResource(object):
         corresponding instances from the database.
 
         Order of requested ids is preserved.
+
+        Allows `clean_id()` to raise Exceptions if given ids are invalid.  You
+        are responsible for handling api.ValueIssue being raised from this.
+
+        Model.DoesNotExist is raised when a given id(s) does not exist in the
+        database.
         '''
 
-        ids = [self.clean_id(id) for id in ids]
+        ids = [self.clean_id(None, id) for id in ids]
         instances = list(self.get_query_set(None).filter(pk__in=ids))
         set_ids = set(ids)
         set_instance_pks = set([instance.pk for instance in instances])
@@ -204,7 +222,7 @@ class DjangoModelResource(object):
         Fetch a set of instances given idset which is in the format of a string
         of semi-colon separated ids.  Handles ensuring all instances are found.
         '''
-        idset = [self.clean_id(id) for id in idset.split(';')]
+        idset = [self.clean_id(request, id) for id in idset.split(';')]
         instances = list(self.get_query_set(request).filter(pk__in=idset))
 
         set_ids = set(idset)
@@ -686,10 +704,17 @@ class DjangoModelResource(object):
 
         with atomic():
             instances = self.fetch_set(request, idset)
-            # TODO handle ValueIssue
-            clean = self.api.expect([self.expected], data, strict_dict=False)
+
             try:
-                ids = [self.clean_id(obj[self.pk_name]) for obj in clean]
+                clean = self.api.expect([self.expected], data, strict_dict=False)
+            except self.api.ValueIssue as exc:
+                return self.api.serialize(request, 400, {
+                    'error': 'Data format was invalid',
+                    'invalid': exc.errors,
+                })
+
+            try:
+                ids = [self.clean_id(request, obj[self.pk_name]) for obj in clean]
             except KeyError:
                 return self.api.serialize(request, 400, {
                     'error': 'You must supply the primary key with each object'
@@ -700,7 +725,7 @@ class DjangoModelResource(object):
                 for instance in instances
             }
             for obj in clean:
-                id = self.clean_id(obj[self.pk_name])
+                id = self.clean_id(request, obj[self.pk_name])
                 instance = instance_lookup[id]
                 self.deserialize(request, obj, instance)
 
