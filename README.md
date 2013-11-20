@@ -9,6 +9,7 @@ will be built in directly.
 
 [![Build Status](https://secure.travis-ci.org/dlamotte/krankshaft.png)](http://travis-ci.org/dlamotte/krankshaft)
 [![pypi version](https://pypip.in/v/krankshaft/badge.png)](https://pypi.python.org/pypi/krankshaft)
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 
 purpose
 =======
