@@ -6,4 +6,5 @@ psycopg2==2.5
 pytest==2.3.5
 pytest-cov==1.6
 pytest-django==2.3.1
+python-coveralls==2.4.0
 pytz==2013b
