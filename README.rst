@@ -20,8 +20,8 @@ will be built in directly.
    :alt: Bitdeli badge
    :target: https://bitdeli.com/free
 
-purpose
-=======
+Purpose
+-------
 
 krankshaft was designed to make the frustrating and unnecessarily complicated
 parts of Web APIs simple and beautiful by default.  It's built in layers that
@@ -45,8 +45,8 @@ Goals:
 - suggests a pattern, but doesnt restrict you to it
 - secure by default
 
-example
-=======
+Example
+-------
 
 This is just a suggested file structure, there is no limitation here.
 
@@ -78,10 +78,8 @@ In ``app/urls.py``::
         url('^view/$', 'view'),
     )
 
-What more did you expect?
-
-resource example
-================
+Resource example
+----------------
 
 In ``app/api.py``::
 
@@ -193,8 +191,8 @@ This resource implementation should be ideal for _most_ situations, but you're
 free to reimplement parts or all of it.  It's meant only as a pattern you can
 follow and is not required by the framework at all.
 
-what works
-==========
+What works
+----------
 
 - simple authentication/authorization schemes (not OAuth at the moment)
 - serialization of primitive types respecting HTTP Accept Header
@@ -206,11 +204,18 @@ what works
 - deep data validation
 - Django ORM based Model Resource (with model serialization/deserialization)
 
-todo
-====
+Todo
+----
 
 - auto-documenting based on doc strings (plus bootstrap interactive UI)
 - caching
 - easy-etag support
 - flask support
 - OAuth (1 and 2)
+
+Resources
+---------
+
+- `Code <https://github.com/dlamotte/krankshaft>`_
+- `Docs <http://krankshaft.readthedocs.org/en/latest/>`_
+- `Issues <https://github.com/dlamotte/krankshaft/issues>`_
