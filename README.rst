@@ -17,6 +17,7 @@ will be built in directly.
    :target: https://pypi.python.org/pypi/krankshaft
 
 .. image:: https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png
+   :alt: Bitdeli badge
    :target: https://bitdeli.com/free
 
 purpose
@@ -195,27 +196,21 @@ follow and is not required by the framework at all.
 what works
 ==========
 
-* simple authentication/authorization schemes (not OAuth at the moment)
-* serialization of primitive types respecting HTTP Accept Header
-* abort (raise-like http response return)
-* throttling
-* resource routing
-* query application (ie: ``?field__startswith=something&order_by=field``)
+- simple authentication/authorization schemes (not OAuth at the moment)
+- serialization of primitive types respecting HTTP Accept Header
+- abort (raise-like http response return)
+- throttling
+- resource routing
+- query application (ie: ``?field__startswith=something&order_by=field``)
   with pagination support
-* deep data validation
-* Django ORM based Model Resource (with model serialization/deserialization)
+- deep data validation
+- Django ORM based Model Resource (with model serialization/deserialization)
 
 TODO
 ====
 
-* auto-documenting based on doc strings (plus bootstrap interactive UI)
-* caching
-* easy-etag support
-* flask support
-* OAuth (1 and 2)
-
-
-.. image:: https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png
-   :alt: Bitdeli badge
-   :target: https://bitdeli.com/free
-
+- auto-documenting based on doc strings (plus bootstrap interactive UI)
+- caching
+- easy-etag support
+- flask support
+- OAuth (1 and 2)
