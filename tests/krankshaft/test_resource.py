@@ -643,7 +643,7 @@ class ResourceTest(TestCaseNoDB):
             content_type='application/json'
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 415
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'error': 'Data format was invalid',
@@ -770,7 +770,7 @@ class ResourceTest(TestCaseNoDB):
             }),
             content_type='application/json'
         )
-        assert response.status_code == 400
+        assert response.status_code == 415
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'error': 'Supplied data was invalid',
@@ -850,7 +850,7 @@ class ResourceTest(TestCaseNoDB):
             content_type='application/json'
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 415
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'error': 'Supplied data was invalid',

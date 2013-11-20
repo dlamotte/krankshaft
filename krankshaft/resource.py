@@ -106,7 +106,7 @@ class DjangoModelResource(object):
         try:
             clean = self.api.expect(self.expected, data, strict_dict=False)
         except self.api.ValueIssue as exc:
-            self.api.abort(self.api.serialize(request, 400, {
+            self.api.abort(self.api.serialize(request, 415, {
                 'error': 'Supplied data was invalid',
                 'invalid': exc.errors,
             }))
@@ -708,7 +708,7 @@ class DjangoModelResource(object):
             try:
                 clean = self.api.expect([self.expected], data, strict_dict=False)
             except self.api.ValueIssue as exc:
-                return self.api.serialize(request, 400, {
+                return self.api.serialize(request, 415, {
                     'error': 'Data format was invalid',
                     'invalid': exc.errors,
                 })
