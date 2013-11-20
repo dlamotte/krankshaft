@@ -230,7 +230,7 @@ class API(object):
 
         except self.serializer.Unsupported:
             if abortable:
-                self.abort(request, 415)
+                self.abort(request, 406)
             else:
                 raise
 

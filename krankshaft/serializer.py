@@ -179,7 +179,12 @@ class Serializer(object):
 
         Find a suitable format from a content type.
         '''
-        content_type = mimeparse.best_match(self.content_types.keys(), accept)
+        # ensure default_content_type is last so that accept = '*/*' picks up
+        # our default_content_type
+        content_types = self.content_types.keys()
+        content_types.sort(key=lambda x: x == self.default_content_type)
+
+        content_type = mimeparse.best_match(content_types, accept)
         if not content_type:
             raise self.Unsupported(accept)
         return content_type, self.content_types[content_type]
@@ -206,11 +211,15 @@ class Serializer(object):
         method = getattr(self, 'to_%s' % format)
 
         # ugly hack to get the params to the header part out
-        accept = [
-            part
-            for part in accept.split(',')
-            if part.startswith(content_type)
-        ][0]
+        try:
+            accept = [
+                part
+                for part in accept.split(',')
+                if part.startswith(content_type)
+            ][0]
+        except IndexError:
+            # '*/*' case
+            accept = content_type
 
         params = mimeparse.parse_mime_type(accept)[2]
         for key, value in params.items():

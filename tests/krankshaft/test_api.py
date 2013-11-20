@@ -229,7 +229,7 @@ class APITest(TestCaseNoDB):
             '!',
             content_type='unsupported/content-type'
         )
-        self.assertEquals(response.status_code, 415)
+        self.assertEquals(response.status_code, 406)
 
     def test_deserialize_unsupported_content_type_nonabortable(self):
         request = self.make_request('POST',
@@ -441,6 +441,14 @@ class APITest(TestCaseNoDB):
             'application/json'
         )
         self.assertEquals(response.content, json.dumps(data, indent=4))
+
+    def test_serialize_default_browser_accept(self):
+        data = {'one': 1}
+        request = self.make_request(HTTP_ACCEPT='*/*')
+        response = self.api.serialize(request, 200, data)
+        assert response.status_code == 200
+        assert response['Content-Type'] == 'application/json; charset=utf-8'
+        assert json.loads(response.content) == {'one': 1}
 
     def test_serialize_force_content_type(self):
         data = {'one': 1}
