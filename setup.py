@@ -12,7 +12,10 @@ install_requires = [
     'mimeparse==0.1.3',
 ]
 
-tests_requires = open('requirements.txt').read().splitlines()
+try:
+    tests_requires = open('requirements.txt').read().splitlines()
+except IOError:
+    tests_requires = []
 
 long_description = ''
 try:
