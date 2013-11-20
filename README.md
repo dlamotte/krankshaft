@@ -8,6 +8,7 @@ other frameworks with some modification.  At some point, other framework support
 will be built in directly.
 
 [![Build Status](https://secure.travis-ci.org/dlamotte/krankshaft.png)](http://travis-ci.org/dlamotte/krankshaft)
+[![Coverage Status](https://coveralls.io/repos/dlamotte/krankshaft/badge.png)](https://coveralls.io/r/dlamotte/krankshaft)
 [![pypi version](https://pypip.in/v/krankshaft/badge.png)](https://pypi.python.org/pypi/krankshaft)
 [![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 

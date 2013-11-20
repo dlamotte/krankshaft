@@ -5,3 +5,5 @@ install: 'pip install . --use-mirrors'
 before_script:
     - psql -c 'create database krankshaft;' -U postgres
 script: 'python setup.py test'
+after_success:
+    - coveralls
