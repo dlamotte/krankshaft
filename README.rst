@@ -213,3 +213,9 @@ TODO
 * easy-etag support
 * flask support
 * OAuth (1 and 2)
+
+
+.. image:: https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png
+   :alt: Bitdeli badge
+   :target: https://bitdeli.com/free
+
