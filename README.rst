@@ -7,10 +7,17 @@ Currently only supports Django, but designed to work for
 other frameworks with some modification.  At some point, other framework support
 will be built in directly.
 
-[![Build Status](https://secure.travis-ci.org/dlamotte/krankshaft.png)](http://travis-ci.org/dlamotte/krankshaft)
-[![Coverage Status](https://coveralls.io/repos/dlamotte/krankshaft/badge.png)](https://coveralls.io/r/dlamotte/krankshaft)
-[![pypi version](https://pypip.in/v/krankshaft/badge.png)](https://pypi.python.org/pypi/krankshaft)
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+.. image:: https://secure.travis-ci.org/dlamotte/krankshaft.png
+   :target: http://travis-ci.org/dlamotte/krankshaft
+
+.. image:: https://coveralls.io/repos/dlamotte/krankshaft/badge.png
+   :target: https://coveralls.io/r/dlamotte/krankshaft
+
+.. image:: https://pypip.in/v/krankshaft/badge.png
+   :target: https://pypi.python.org/pypi/krankshaft
+
+.. image:: https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png
+   :target: https://bitdeli.com/free
 
 purpose
 =======
@@ -26,30 +33,30 @@ application.
 
 Goals:
 
-* simple and concise
-* keep the simple things simple
-* enable complex APIs without getting in the way
-* HTTP return codes are important, dont abstract them away
-* fail early
-* performance
-* no global state
-* easily extendable
-* suggests a pattern, but doesnt restrict you to it
-* secure by default
+- simple and concise
+- keep the simple things simple
+- enable complex APIs without getting in the way
+- HTTP return codes are important, dont abstract them away
+- fail early
+- performance
+- no global state
+- easily extendable
+- suggests a pattern, but doesnt restrict you to it
+- secure by default
 
 example
 =======
 
 This is just a suggested file structure, there is no limitation here.
 
-In `app/apiv1.py`:
+In ``app/apiv1.py``::
 
     from django.conf import settings
     from krankshaft import API
 
     apiv1 = API('v1', debug=settings.DEBUG)
 
-In `app/views.py`:
+In ``app/views.py``::
 
     from app.apiv1 import apiv1 as api
 
@@ -62,7 +69,7 @@ In `app/views.py`:
 At this point, you'll still need to wire up the common routing for your
 framework.  In Django, it looks something like this:
 
-In `app/urls.py`:
+In ``app/urls.py``::
 
     from django.conf.urls import patterns, include, url
 
@@ -75,7 +82,7 @@ What more did you expect?
 resource example
 ================
 
-In `app/api.py`:
+In ``app/api.py``::
 
     from django.conf import settings
 
@@ -92,7 +99,7 @@ In `app/api.py`:
         def delete(self, request, id):
             ...
 
-In `app/urls.py`:
+In ``app/urls.py``::
 
     from django.conf.urls import patterns, include, url
     from .api import api
@@ -101,14 +108,14 @@ In `app/urls.py`:
         url('^api/', include(api.urls)),
     )
 
-This enables clients to make GET/PUT/DELETE requests to the endpoint:
+This enables clients to make GET/PUT/DELETE requests to the endpoint::
 
     /api/v1/model/<id>/
 
 If a POST is made, the client will receive the proper 405 response with the
 Allow header set to GET, PUT, DELETE.
 
-You can customize resources even more.  You can define your own routing scheme:
+You can customize resources even more.  You can define your own routing scheme::
 
     class ModelResource(object):
         ...
@@ -123,7 +130,7 @@ You can customize resources even more.  You can define your own routing scheme:
             else:
                 return view(request, id)
 
-Or setup urls and multiple routes:
+Or setup urls and multiple routes::
 
     class ModelResource(object):
         ...
@@ -171,7 +178,7 @@ Or setup urls and multiple routes:
                 url(r'^model/(?P<id>\d+)/$', api.wrap(self.route_object)),
             ])
 
-Or (instead of building your own) use the one built in:
+Or (instead of building your own) use the one built in::
 
     from krankshaft.resource import DjangoModelResource
     from app.models import Model
@@ -193,7 +200,7 @@ what works
 * abort (raise-like http response return)
 * throttling
 * resource routing
-* query application (ie: `?field__startswith=something&order_by=field`)
+* query application (ie: ``?field__startswith=something&order_by=field``)
   with pagination support
 * deep data validation
 * Django ORM based Model Resource (with model serialization/deserialization)
@@ -206,4 +213,3 @@ TODO
 * easy-etag support
 * flask support
 * OAuth (1 and 2)
-

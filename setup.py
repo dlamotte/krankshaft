@@ -19,7 +19,7 @@ except IOError:
 
 long_description = ''
 try:
-    long_description = open('README.md').read()
+    long_description = open('README.rst').read()
 except IOError:
     pass
 
