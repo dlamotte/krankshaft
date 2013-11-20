@@ -206,7 +206,7 @@ what works
 - deep data validation
 - Django ORM based Model Resource (with model serialization/deserialization)
 
-TODO
+todo
 ====
 
 - auto-documenting based on doc strings (plus bootstrap interactive UI)
