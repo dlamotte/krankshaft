@@ -418,6 +418,12 @@ class APITest(TestCaseNoDB):
             'resource_uri': '/app2/api/v1/fake2/1/',
         }
 
+    def test_include_api1_again(self):
+        self.assertRaises(self.api2.Error, self.api2.include, self.api1)
+
+    def test_include_self(self):
+        self.assertRaises(self.api2.Error, self.api2.include, self.api2)
+
     def test_method_get(self):
         response = self.client.get('/only-post/')
         self.assertEqual(response.status_code, 405)
