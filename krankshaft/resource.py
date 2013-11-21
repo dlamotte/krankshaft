@@ -364,6 +364,22 @@ class DjangoModelResource(object):
 
         return related_validator
 
+    def make_view(self, name, methods):
+        '''make_view(self.endpoint('list'), {...}) -> resource_view
+
+        Make a view that can resolve back to this resource and is suitable for
+        use.
+        '''
+        def view(request, *args, **kwargs):
+            return self.api.route(methods, request, args, kwargs)
+
+        view.__name__ = name
+
+        # so resolve() can find its way back from the view to the resource
+        view.resource = self
+
+        return view
+
     @property
     def name(self):
         '''
@@ -424,31 +440,6 @@ class DjangoModelResource(object):
         '''
         return self.reverse('single', args=(id,))
 
-    def route_list(self, request, *args, **kwargs):
-        '''Method based routing for list endpoints'''
-        return self.api.route({
-            'delete': self.delete_list,
-            'get': self.get_list,
-            'post': self.post_list,
-            'put': self.put_list,
-        }, request, args, kwargs)
-
-    def route_set(self, request, *args, **kwargs):
-        '''Method based routing for set endpoints'''
-        return self.api.route({
-            'delete': self.delete_set,
-            'get': self.get_set,
-            'put': self.put_set,
-        }, request, args, kwargs)
-
-    def route_single(self, request, *args, **kwargs):
-        '''Method based routing for single object endpoints'''
-        return self.api.route({
-            'delete': self.delete,
-            'get': self.get,
-            'put': self.put,
-        }, request, args, kwargs)
-
     def serialize(self, instance):
         '''serialize(instance) -> {...}
 
@@ -501,6 +492,42 @@ class DjangoModelResource(object):
         return data
 
     @property
+    def routes(self):
+        '''
+        Return a map of HTTP Method routes under an endpoint.
+
+        ie:
+            prefix = r'^%s/' % self.name
+            return (
+                ('name_of_url', prefix + r'endpoint/$', {
+                    'method': self.view,
+                    ...
+                }),
+                ...
+            )
+
+        '''
+        prefix = r'^%s/' % self.name
+        return (
+            (self.endpoint('list'), prefix + '$', {
+                'delete': self.delete_list,
+                'get': self.get_list,
+                'post': self.post_list,
+                'put': self.put_list,
+            }),
+            (self.endpoint('single'), prefix + '(?P<id>[^/]+)/$', {
+                'delete': self.delete,
+                'get': self.get,
+                'put': self.put,
+            }),
+            (self.endpoint('set'), prefix + 'set/(?P<idset>[^/](?:[^/]|;)*)/$', {
+                'delete': self.delete_set,
+                'get': self.get_set,
+                'put': self.put_set,
+            }),
+        )
+
+    @property
     def urls(self):
         '''
         Return the Django URLs needed to hook up this resource to URL routing.
@@ -510,13 +537,10 @@ class DjangoModelResource(object):
         '''
         from django.conf.urls import patterns, include, url
 
-        return patterns('',
-            url(r'^%s/' % self.name, include(patterns('',
-                url('^$', self.api.wrap(self.route_list), name=self.endpoint('list')),
-                url(r'^(?P<id>[^/]+)/$', self.api.wrap(self.route_single), name=self.endpoint('single')),
-                url(r'^set/(?P<idset>[^/](?:[^/]|;)*)/$', self.api.wrap(self.route_set), name=self.endpoint('set')),
-            )))
-        )
+        return patterns('', *[
+            url(regex, self.api.wrap(self.make_view(name, methods)), name=name)
+            for name, regex, methods in self.routes
+        ])
 
 
     def delete(self, request, id):

@@ -581,7 +581,10 @@ class API(object):
             except Resolver404:
                 view = None
 
-            if not view or not hasattr(view, 'im_self'):
+            view_resource = \
+                getattr(view, 'resource', None) \
+                or getattr(view, 'im_self', None)
+            if not view or not view_resource:
                 raise self.ResolveError(
                     'Unable to find a resource for path: %s' % path
                 )
@@ -589,9 +592,9 @@ class API(object):
             ids.append(args[0] if args else kwargs.values()[0])
 
             if resource is None:
-                resource = view.im_self
+                resource = view_resource
 
-            if resource != view.im_self:
+            if resource != view_resource:
                 raise self.ResolveError(
                     'Multiple resources found for given paths'
                 )
@@ -851,7 +854,7 @@ class API(object):
                 # method, this is the only way we can find our way back to
                 # the original resource (not thrilled with this hacky-ness)
                 try:
-                    for attr in ('im_class', 'im_func', 'im_self'):
+                    for attr in ('im_self', 'resource'):
                         setattr(view, attr, getattr(view_or_resource, attr))
                 except AttributeError:
                     pass
