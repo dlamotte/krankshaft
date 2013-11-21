@@ -56,11 +56,29 @@ class FakeAPI(models.Model):
 class FakeAPI2(models.Model):
     char_indexed = models.CharField(max_length=20, db_index=True)
 
+class Fake1(models.Model):
+    name = models.CharField(max_length=20)
+
+class Fake2(models.Model):
+    fake1 = models.ForeignKey(Fake1)
+
 class APITest(TestCaseNoDB):
     def _pre_setup(self):
         self.api = API('v1')
         self.apid = API('v1', debug=True)
         self.api_error = API('v1', debug=True, error='custom error message')
+        self.api1 = API('v1')
+        self.api2 = API('v1')
+        self.api2.include(self.api1)
+
+        @self.api1
+        class Fake1Resource(DjangoModelResource):
+            model = Fake1
+
+        @self.api2
+        class Fake2Resource(DjangoModelResource):
+            model = Fake2
+
         super(APITest, self)._pre_setup()
 
         # make sure cache is clear
@@ -387,6 +405,19 @@ class APITest(TestCaseNoDB):
         self.assertEquals(data['exception'], "KeyError: 'key'")
         self.assertTrue(data['traceback'])
 
+    def test_include(self):
+        fake1 = Fake1.objects.create(id=1, name='fake1')
+        fake2 = Fake2.objects.create(id=1, fake1=fake1)
+
+        response = self.client.get(self.api2.reverse('fake2_single', args=(1,)))
+        assert response.status_code == 200
+        assert json.loads(response.content) == {
+            'id': 1,
+            'fake1': '/app1/api/v1/fake1/1/',
+            'fake1_id': 1,
+            'resource_uri': '/app2/api/v1/fake2/1/',
+        }
+
     def test_method_get(self):
         response = self.client.get('/only-post/')
         self.assertEqual(response.status_code, 405)
@@ -482,7 +513,7 @@ class APITest(TestCaseNoDB):
 
     @property
     def urls(self):
-        from django.conf.urls import url
+        from django.conf.urls import include, url
         return self.make_urlconf(
             url('^deny/$',
                 self.api(self.view_serialize_payload, auth=AuthDeny)
@@ -498,6 +529,8 @@ class APITest(TestCaseNoDB):
             url('^throttle/$',
                 self.api(self.view_serialize_payload, throttle=ThrottleOne)
             ),
+            url('^app1/api/', include(self.api1.urls)),
+            url('^app2/api/', include(self.api2.urls)),
         )
 
     def view_auth_manual(self, request):

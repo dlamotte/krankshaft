@@ -92,6 +92,7 @@ class API(object):
         '''
         self.debug = debug
         self.error = error or self.error
+        self.included = []
         self.loaded = False
         self.name = name
         self.registry = []
@@ -401,6 +402,19 @@ class API(object):
         response['Content-Type'] += '; charset=utf-8'
         return response
 
+    def include(self, otherapi):
+        '''include(otherapi)
+
+        Include another API's views/resources in this API's lookup mechanisms.
+        '''
+        if otherapi is self:
+            raise self.Error('Refusing to include itself')
+
+        if otherapi in self.included:
+            raise self.Error('Refusing to add api twice to included list')
+
+        self.included.append(otherapi)
+
     def load(self):
         '''load()
 
@@ -531,6 +545,10 @@ class API(object):
         '''
         for view, url in self.registry:
             yield view
+
+        for api in self.included:
+            for view in api.registered_views:
+                yield view
 
     def resolve(self, paths):
         '''resolve([path, ...]) -> resource, [1, ...]
