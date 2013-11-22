@@ -485,6 +485,48 @@ class DjangoModelResource(object):
         '''
         return self.reverse('single', args=(id,))
 
+    @property
+    def routes(self):
+        '''
+        Return a map of HTTP Method routes under an endpoint.
+
+        ie:
+            prefix = r'^%s/' % self.name
+            return (
+                ('name_of_url', prefix + r'endpoint/$', {
+                    'method': self.view,
+                    ...
+                }),
+                ...
+            )
+
+        '''
+        prefix = r'^%s/' % self.name
+        return (
+            (self.endpoint('list'), prefix + '$',
+                self.allowed('list', {
+                    'delete': self.delete_list,
+                    'get': self.get_list,
+                    'post': self.post_list,
+                    'put': self.put_list,
+                })
+            ),
+            (self.endpoint('single'), prefix + '(?P<id>[^/]+)/$',
+                self.allowed('single', {
+                    'delete': self.delete,
+                    'get': self.get,
+                    'put': self.put,
+                })
+            ),
+            (self.endpoint('set'), prefix + 'set/(?P<idset>[^/](?:[^/]|;)*)/$',
+                self.allowed('set', {
+                    'delete': self.delete_set,
+                    'get': self.get_set,
+                    'put': self.put_set,
+                })
+            ),
+        )
+
     def serialize(self, instance):
         '''serialize(instance) -> {...}
 
@@ -535,48 +577,6 @@ class DjangoModelResource(object):
         data['resource_uri'] = self.reverse_single(instance.pk)
 
         return data
-
-    @property
-    def routes(self):
-        '''
-        Return a map of HTTP Method routes under an endpoint.
-
-        ie:
-            prefix = r'^%s/' % self.name
-            return (
-                ('name_of_url', prefix + r'endpoint/$', {
-                    'method': self.view,
-                    ...
-                }),
-                ...
-            )
-
-        '''
-        prefix = r'^%s/' % self.name
-        return (
-            (self.endpoint('list'), prefix + '$',
-                self.allowed('list', {
-                    'delete': self.delete_list,
-                    'get': self.get_list,
-                    'post': self.post_list,
-                    'put': self.put_list,
-                })
-            ),
-            (self.endpoint('single'), prefix + '(?P<id>[^/]+)/$',
-                self.allowed('single', {
-                    'delete': self.delete,
-                    'get': self.get,
-                    'put': self.put,
-                })
-            ),
-            (self.endpoint('set'), prefix + 'set/(?P<idset>[^/](?:[^/]|;)*)/$',
-                self.allowed('set', {
-                    'delete': self.delete_set,
-                    'get': self.get_set,
-                    'put': self.put_set,
-                })
-            ),
-        )
 
     @property
     def urls(self):
