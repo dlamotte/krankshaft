@@ -25,6 +25,9 @@ class DjangoModelResource(object):
 
     Options:
 
+        allowed_methods list of allowed HTTP methods for all endpoints
+        allowed_methods_endpoint
+                        list of allowed HTTP methods by endpoint
         excludes        list/tuple of field names to exclude from
                         serialize/deserialize
         fields          list/tuple of field names to serialize/deserialize
@@ -34,6 +37,8 @@ class DjangoModelResource(object):
 
     '''
     Query = DjangoQuery
+    allowed_methods = None
+    allowed_methods_endpoint = None
     excludes = None
     fields = None
     model = None
@@ -59,6 +64,46 @@ class DjangoModelResource(object):
         self.expected_pk = None
         self.loaded = False
         self.related_lookup_cache = {}
+
+        if self.allowed_methods:
+            self.allowed_methods = tuple([
+                method.lower()
+                for method in self.allowed_methods
+            ])
+
+        if self.allowed_methods_endpoint:
+            self.allowed_methods_endpoint = {
+                endpoint: tuple([
+                    method.lower()
+                    for method in methods
+                ])
+                for endpoint, methods in
+                    self.allowed_methods_endpoint.iteritems()
+                if methods
+            }
+
+    def allowed(self, endpoint, map):
+        '''allowed('list', {'get': self.get, ...})
+
+        Filter the given route method map based on specified allowed methods.
+        '''
+        tocheck = [
+            self.allowed_methods,
+            self.allowed_methods_endpoint.get(endpoint)
+                if self.allowed_methods_endpoint else None,
+        ]
+        newmap = {}
+        for method, view in map.iteritems():
+            allowed = True
+            for methods in tocheck:
+                if methods and method.lower() not in methods:
+                    allowed = False
+                    break
+
+            if allowed:
+                newmap[method] = view
+
+        return newmap
 
     def clean_id(self, request, id):
         '''clean_id(request, id) -> clean_id
@@ -509,22 +554,28 @@ class DjangoModelResource(object):
         '''
         prefix = r'^%s/' % self.name
         return (
-            (self.endpoint('list'), prefix + '$', {
-                'delete': self.delete_list,
-                'get': self.get_list,
-                'post': self.post_list,
-                'put': self.put_list,
-            }),
-            (self.endpoint('single'), prefix + '(?P<id>[^/]+)/$', {
-                'delete': self.delete,
-                'get': self.get,
-                'put': self.put,
-            }),
-            (self.endpoint('set'), prefix + 'set/(?P<idset>[^/](?:[^/]|;)*)/$', {
-                'delete': self.delete_set,
-                'get': self.get_set,
-                'put': self.put_set,
-            }),
+            (self.endpoint('list'), prefix + '$',
+                self.allowed('list', {
+                    'delete': self.delete_list,
+                    'get': self.get_list,
+                    'post': self.post_list,
+                    'put': self.put_list,
+                })
+            ),
+            (self.endpoint('single'), prefix + '(?P<id>[^/]+)/$',
+                self.allowed('single', {
+                    'delete': self.delete,
+                    'get': self.get,
+                    'put': self.put,
+                })
+            ),
+            (self.endpoint('set'), prefix + 'set/(?P<idset>[^/](?:[^/]|;)*)/$',
+                self.allowed('set', {
+                    'delete': self.delete_set,
+                    'get': self.get_set,
+                    'put': self.put_set,
+                })
+            ),
         )
 
     @property

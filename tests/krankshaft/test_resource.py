@@ -55,6 +55,10 @@ class Model(models.Model):
     foreign = models.ForeignKey(ModelForeign)
     manytomany = models.ManyToManyField(ModelMany)
 
+class ModelAllowed(models.Model):
+    name = models.CharField(max_length=20)
+
+# TODO test bad set/1;/ syntax
 @pytest.mark.django_db
 class ResourceTest(TestCaseNoDB):
     def _pre_setup(self):
@@ -83,12 +87,10 @@ class ResourceTest(TestCaseNoDB):
         @api
         class ModelManyResource(DjangoModelResource):
             model = ModelMany
-            name = 'modelmany'
 
         @api
         class ModelOtherResource(DjangoModelResource):
             model = ModelOther
-            name = 'modelother'
 
             def deserialize_seconds(self, instance, field, data):
                 return data['seconds'] / 10
@@ -99,12 +101,24 @@ class ResourceTest(TestCaseNoDB):
         @api
         class ModelUnauthorizedResource(DjangoModelResource):
             model = ModelUnauthorized
-            name = 'modelunauthorized'
 
         @api
         class ModelResource(DjangoModelResource):
             model = Model
-            name = 'model'
+
+        @api
+        class ModelAllowedResource(DjangoModelResource):
+            model = ModelAllowed
+            allowed_methods = ('get',)
+
+        @api
+        class ModelAllowed2Resource(DjangoModelResource):
+            model = ModelAllowed
+            allowed_methods_endpoint = {
+                'list': ('get',),
+                'single': ('get',),
+                'set': ('get',),
+            }
 
         # only to satisfy coverage (calling load() twice)
         for resource in self.api.registered_resources:
@@ -123,6 +137,31 @@ class ResourceTest(TestCaseNoDB):
             ModelForeignNoResource,
         ]:
             model.objects.all().delete()
+
+    def test_allowed(self):
+        ModelAllowed.objects.create(id=1, name='allowed')
+        ModelAllowed.objects.create(id=2, name='allowed2')
+
+        for code, method in (
+            (405, self.client.delete),
+            (200, self.client.get),
+            (405, self.client.post),
+            (405, self.client.put),
+        ):
+            for endpoint, args in (
+                ('list', ()),
+                ('single', (1,)),
+                ('set', ('1;2',)),
+            ):
+                response = method(
+                    self.api.reverse('modelallowed_' + endpoint, args=args)
+                )
+                assert response.status_code == code
+
+                response = method(
+                    self.api.reverse('modelallowed2_' + endpoint, args=args)
+                )
+                assert response.status_code == code
 
     def test_delete_list(self):
         ModelForeign.objects.create(id=1, char_indexed='value')
