@@ -58,6 +58,14 @@ class Model(models.Model):
 class ModelAllowed(models.Model):
     name = models.CharField(max_length=20)
 
+class ModelVersioned(models.Model):
+    name = models.CharField(max_length=20)
+    version = models.PositiveIntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        self.version += 1
+        return super(ModelVersioned, self).save(*args, **kwargs)
+
 # TODO test bad set/1;/ syntax
 @pytest.mark.django_db
 class ResourceTest(TestCaseNoDB):
@@ -119,6 +127,11 @@ class ResourceTest(TestCaseNoDB):
                 'single': ('get',),
                 'set': ('get',),
             }
+
+        @api
+        class ModelVersionedResource(DjangoModelResource):
+            model = ModelVersioned
+            version_field = 'version'
 
         # only to satisfy coverage (calling load() twice)
         for resource in self.api.registered_resources:
@@ -682,10 +695,10 @@ class ResourceTest(TestCaseNoDB):
             content_type='application/json'
         )
 
-        assert response.status_code == 415
+        assert response.status_code == 422
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
-            'error': 'Data format was invalid',
+            'error': 'Supplied data was invalid',
             'invalid': ["Unexpected type, expected <type 'list'>: <type 'dict'>"],
         }
 
@@ -809,7 +822,7 @@ class ResourceTest(TestCaseNoDB):
             }),
             content_type='application/json'
         )
-        assert response.status_code == 415
+        assert response.status_code == 422
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'error': 'Supplied data was invalid',
@@ -889,7 +902,7 @@ class ResourceTest(TestCaseNoDB):
             content_type='application/json'
         )
 
-        assert response.status_code == 415
+        assert response.status_code == 422
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'error': 'Supplied data was invalid',
@@ -932,6 +945,141 @@ class ResourceTest(TestCaseNoDB):
             ],
             'manytomany_id': [1,2,3],
             'resource_uri': '/api/v1/model/1/',
+        }
+
+    def test_version_field(self):
+        ModelVersioned.objects.create(id=1, name='initial')
+
+        resource_uri = self.api.reverse('modelversioned_single', args=(1,))
+        response = self.client.put(
+            resource_uri,
+            json.dumps({
+                'name': 'first',
+                'version': 1,
+            }),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        assert json.loads(response.content) == {
+            'id': 1,
+            'name': 'first',
+            'version': 2,
+            'resource_uri': resource_uri,
+        }
+
+        response = self.client.put(
+            resource_uri,
+            json.dumps({
+                'name': 'invalid',
+                'version': 1,
+            }),
+            content_type='application/json'
+        )
+        assert response.status_code == 409
+        assert response.content == ''
+
+        response = self.client.put(
+            resource_uri,
+            json.dumps({
+                'name': 'second',
+                'version': 2,
+            }),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        assert json.loads(response.content) == {
+            'id': 1,
+            'name': 'second',
+            'version': 3,
+            'resource_uri': resource_uri,
+        }
+
+    def test_version_field_missing_version_field(self):
+        ModelVersioned.objects.create(id=1, name='initial')
+
+        resource_uri = self.api.reverse('modelversioned_single', args=(1,))
+        response = self.client.put(
+            resource_uri,
+            json.dumps({
+                'name': 'first',
+            }),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        assert json.loads(response.content) == {
+            'error': 'The "version" field must be specified',
+        }
+
+    def test_version_field_put_set(self):
+        ModelVersioned.objects.create(id=1, name='initial')
+        ModelVersioned.objects.create(id=2, name='initial')
+
+        response = self.client.put(
+            self.api.reverse('modelversioned_set', args=('1;2',)),
+            json.dumps([
+                {
+                    'id': 1,
+                    'name': 'invalid',
+                },
+                {
+                    'id': 2,
+                    'name': 'invalid',
+                },
+            ]),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        assert json.loads(response.content) == {
+            'invalid': {
+                '1': {'error': 'The "version" field must be specified'},
+                '2': {'error': 'The "version" field must be specified'},
+            }
+        }
+
+        response = self.client.put(
+            self.api.reverse('modelversioned_set', args=('1;2',)),
+            json.dumps([
+                {
+                    'id': 1,
+                    'name': 'invalid',
+                    'version': 2,
+                },
+                {
+                    'id': 2,
+                    'name': 'invalid',
+                    'version': 2,
+                },
+            ]),
+            content_type='application/json'
+        )
+        assert response.status_code == 409
+        assert response.content == ''
+
+        response = self.client.put(
+            self.api.reverse('modelversioned_set', args=('1;2',)),
+            json.dumps([
+                {
+                    'id': 1,
+                    'name': 'invalid',
+                },
+                {
+                    'id': 2,
+                    'name': 'invalid',
+                    'version': 2,
+                },
+            ]),
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+        assert json.loads(response.content) == {
+            'error': 'Mixed error codes',
+            'invalid': {
+                '1': {
+                    'code': 400,
+                    'error': 'The "version" field must be specified'
+                },
+                '2': {'code': 409},
+            }
         }
 
     @property

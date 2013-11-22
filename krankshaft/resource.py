@@ -1,3 +1,4 @@
+from . import util
 from .query import DjangoQuery
 from django.core.urlresolvers import reverse
 from django.db import models
@@ -7,6 +8,7 @@ try:
 except ImportError:
     from .compat.xact import xact as atomic
 
+# TODO easy way to included serialized data for related/reverse fields
 class DjangoModelResource(object):
     '''
     Expose a Django Model as a RESTful resource.  Default implementation
@@ -34,6 +36,20 @@ class DjangoModelResource(object):
         use_location    instead of returning a serialized payload on POST/PUT,
                         use a Location header to point to where you may get
                         the representation (default: False)
+        version_field   field name to use as Optimistic Concurrency Control
+                        http://en.wikipedia.org/wiki/Optimistic_concurrency_control
+                        This field becomes required in all requests to update
+                        objects as it's tests for equality in the request
+                        compared to the database.  It's a way to ensure that
+                        if someone changes an object, it's changes are not
+                        accidently overwritten by another requester.  No server
+                        side locking required.
+                        caveat: disables PUT to list endpoint as there is
+                        no good way to handle this case (can be overridden by
+                        version_field_allow_put_list = True if you want to
+                        implement your own)
+        version_field_allow_put_list
+                        see version_field caveat
 
     '''
     Query = DjangoQuery
@@ -43,6 +59,8 @@ class DjangoModelResource(object):
     fields = None
     model = None
     use_location = False
+    version_field = None
+    version_field_allow_put_list = None
 
     def __init__(self):
         self.fields = tuple([
@@ -82,6 +100,10 @@ class DjangoModelResource(object):
                 if methods
             }
 
+        if self.version_field \
+           and self.version_field_allow_put_list is None:
+            self.version_field_allow_put_list = False
+
     def allowed(self, endpoint, map):
         '''allowed('list', {'get': self.get, ...})
 
@@ -104,6 +126,24 @@ class DjangoModelResource(object):
                 newmap[method] = view
 
         return newmap
+
+    def clean(self, request, data, list=False):
+        '''clean(request, data) -> clean
+
+        Clean data from user environment suitable for applying to an instance
+        or creating an instance.
+        '''
+        expected = self.expected
+        if list:
+            expected = [expected]
+
+        try:
+            return self.api.expect(expected, data, strict_dict=False)
+        except self.api.ValueIssue as exc:
+            self.api.abort(self.api.serialize(request, 422, {
+                'error': 'Supplied data was invalid',
+                'invalid': exc.errors,
+            }))
 
     def clean_id(self, request, id):
         '''clean_id(request, id) -> clean_id
@@ -137,59 +177,68 @@ class DjangoModelResource(object):
                 'invalid': exc.errors,
             }))
 
+    def check(self, request, instance, clean, abortable=True):
+        '''check(request, instance, clean)
+
+        Aborts if any checks given an instance and the clean()ed data fail.
+
+        This is where version_field is used to test if the database and request
+        are in sync.
+
+        If abortable is False, the response code and error detail that would
+        have been serialized with the response is returned.
+
+            code, detail = \\
+                self.check(request, instance, clean, abortable=False)
+
+            if code:
+                if detail:
+                    self.api.abort(self.api.serialize(request, code, detail))
+
+                else:
+                    self.api.abort(request, code)
+
+        '''
+        # effectively use "goto" conventions, not really looping here
+        code = None
+        detail = None
+        while True:
+            if self.version_field and instance:
+                if self.version_field not in clean:
+                    code = 400
+                    detail = {
+                        'error': 'The "%s" field must be specified' \
+                        % self.version_field
+                    }
+                    break
+
+                version_db = getattr(instance, self.version_field)
+                version_clean = clean[self.version_field]
+                if version_db != version_clean:
+                    code = 409
+                    break
+
+            break
+
+        if abortable and code:
+            if detail:
+                self.api.abort(self.api.serialize(request, code, detail))
+            else:
+                self.api.abort(request, code)
+
+        return code, detail
+
     def deserialize(self, request, data, instance=None):
         '''deserialize(request, data, instance=instance) -> instance
 
-        Deserialize a request payload (`data`) into an instance (either given
-        instance or will construct a new one).
-
-        No further saving is required after this has been called.
+        Convenience method for clean(), check(), and update().
         '''
         if instance is None:
             instance = self.model()
 
-        try:
-            clean = self.api.expect(self.expected, data, strict_dict=False)
-        except self.api.ValueIssue as exc:
-            self.api.abort(self.api.serialize(request, 415, {
-                'error': 'Supplied data was invalid',
-                'invalid': exc.errors,
-            }))
-
-        manytomany = {}
-        for field in self.fields:
-            if field.name not in clean:
-                # since its not strictly enforcing extra/missing keys, if
-                # the client didn't supply the field, stick with model defaults
-                continue
-
-            method = getattr(self, 'deserialize_%s' % field.name, None)
-            if method:
-                setattr(instance, field.name, method(instance, field, data))
-
-            else:
-                if isinstance(field, models.ManyToManyField):
-                    resource = self.related_lookup(field)
-                    manytomany[field] = resource.fetch(*clean[field.name])
-
-                elif isinstance(field, models.ForeignKey):
-                    setattr(instance, field.name + '_id', clean[field.name])
-
-                else:
-                    setattr(instance, field.name, clean[field.name])
-
-        instance.save()
-        for field, instances in manytomany.iteritems():
-            manager = getattr(instance, field.name)
-            manager.clear()
-            manager.add(*instances)
-
-            if hasattr(instance, '_prefetched_objects_cache') \
-               and field.name in instance._prefetched_objects_cache:
-                instance._prefetched_objects_cache[field.name] = \
-                    instances
-
-        return instance
+        clean = self.clean(request, data)
+        self.check(request, instance, clean)
+        return self.update(instance, clean)
 
     def endpoint(self, name):
         '''endpoint('list') -> 'api_v1_resource_list'
@@ -502,14 +551,18 @@ class DjangoModelResource(object):
 
         '''
         prefix = r'^%s/' % self.name
+        list_methods = {
+            'delete': self.delete_list,
+            'get': self.get_list,
+            'post': self.post_list,
+            'put': self.put_list,
+        }
+        if self.version_field and not self.version_field_allow_put_list:
+            del list_methods['put']
+
         return (
             (self.endpoint('list'), prefix + '$',
-                self.allowed('list', {
-                    'delete': self.delete_list,
-                    'get': self.get_list,
-                    'post': self.post_list,
-                    'put': self.put_list,
-                })
+                self.allowed('list', list_methods)
             ),
             (self.endpoint('single'), prefix + '(?P<id>[^/]+)/$',
                 self.allowed('single', {
@@ -577,6 +630,48 @@ class DjangoModelResource(object):
         data['resource_uri'] = self.reverse_single(instance.pk)
 
         return data
+
+    def update(self, instance, clean):
+        '''update(instance, clean) -> instance
+
+        Update an instance with clean()ed data specified in the request.
+
+        No further saving is required after this has been called.
+        '''
+        manytomany = {}
+        for field in self.fields:
+            if field.name not in clean:
+                # since its not strictly enforcing extra/missing keys, if
+                # the client didn't supply the field, stick with model defaults
+                continue
+
+            method = getattr(self, 'deserialize_%s' % field.name, None)
+            if method:
+                setattr(instance, field.name, method(instance, field, clean))
+
+            else:
+                if isinstance(field, models.ManyToManyField):
+                    resource = self.related_lookup(field)
+                    manytomany[field] = resource.fetch(*clean[field.name])
+
+                elif isinstance(field, models.ForeignKey):
+                    setattr(instance, field.name + '_id', clean[field.name])
+
+                else:
+                    setattr(instance, field.name, clean[field.name])
+
+        instance.save()
+        for field, instances in manytomany.iteritems():
+            manager = getattr(instance, field.name)
+            manager.clear()
+            manager.add(*instances)
+
+            if hasattr(instance, '_prefetched_objects_cache') \
+               and field.name in instance._prefetched_objects_cache:
+                instance._prefetched_objects_cache[field.name] = \
+                    instances
+
+        return instance
 
     @property
     def urls(self):
@@ -779,18 +874,9 @@ class DjangoModelResource(object):
 
         with atomic():
             instances = self.fetch_set(request, idset)
+            clean = self.clean(request, data, list=True)
 
-            try:
-                clean = self.api.expect([self.expected], data, strict_dict=False)
-            except self.api.ValueIssue as exc:
-                return self.api.serialize(request, 415, {
-                    'error': 'Data format was invalid',
-                    'invalid': exc.errors,
-                })
-
-            try:
-                ids = [self.clean_id(request, obj[self.pk_name]) for obj in clean]
-            except KeyError:
+            if not all(self.pk_name in obj for obj in clean):
                 return self.api.serialize(request, 400, {
                     'error': 'You must supply the primary key with each object'
                 })
@@ -799,8 +885,58 @@ class DjangoModelResource(object):
                 instance.pk: instance
                 for instance in instances
             }
+
+            code_and_details = []
             for obj in clean:
-                id = self.clean_id(request, obj[self.pk_name])
+                id = obj[self.pk_name]
+                instance = instance_lookup[id]
+                code, detail = \
+                    self.check(request, instance, obj, abortable=False)
+                if code:
+                    code_and_details.append((code, id, detail))
+
+            if code_and_details:
+                codes = list(set([
+                    code for code, id, detail in code_and_details
+                ]))
+                has_details = any(
+                    detail for code, id, detail in code_and_details
+                )
+                if len(codes) == 1:
+                    if has_details:
+                        self.api.abort(self.api.serialize(request, codes[0], {
+                            'invalid': {
+                                id: detail
+                                for code, id, detail in code_and_details
+                            }
+                        }))
+
+                    else:
+                        self.api.abort(request, codes[0])
+                else:
+                    # TODO really not thrilled with this... how is the client
+                    # supposed to handle this?
+                    # TODO figure out all 4xx responses that can come out of the
+                    # API and figure out a standardized way to handle the
+                    # response
+                    # at this point, at least they get _something_, but their
+                    # only reasonable course of action is to bail out completely
+                    # start documenting API 4xx errors page? and how to get
+                    # each one?
+                    # document them on a per method endpoint basis... seems like
+                    # the __doc__ on the method makes a lot of sense...
+                    self.api.abort(self.api.serialize(request, 400, {
+                        'error': 'Mixed error codes',
+                        'invalid': {
+                            id: util.defaults({}, detail or {}, {
+                                'code': code,
+                            })
+                            for code, id, detail in code_and_details
+                        }
+                    }))
+
+            for obj in clean:
+                id = obj[self.pk_name]
                 instance = instance_lookup[id]
                 self.deserialize(request, obj, instance)
 
