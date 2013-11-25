@@ -72,7 +72,6 @@ class ModelVersioned(models.Model):
         self.version += 1
         return super(ModelVersioned, self).save(*args, **kwargs)
 
-# TODO test bad set/1;/ syntax
 @pytest.mark.django_db
 class ResourceTest(TestCaseNoDB):
     def _pre_setup(self):
@@ -381,6 +380,18 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'error': 'Missing some requested objects',
             'missing': [3],
+        }
+
+    def test_get_set_trailing_separator(self):
+        response = self.client.get(
+            self.api.reverse('modelforeign_set', args=('1;2;',))
+        )
+
+        assert response.status_code == 400
+        assert response['Content-Type'] == 'application/json; charset=utf-8'
+        assert json.loads(response.content) == {
+            'error': 'Invalid ID for model ModelForeign',
+            'invalid': [u"invalid literal for int() with base 10: ''"],
         }
 
     def test_get_single(self):
