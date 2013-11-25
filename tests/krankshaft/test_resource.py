@@ -32,11 +32,17 @@ class ModelForeign(models.Model):
 class ModelForeign2(models.Model):
     char_indexed = models.CharField(max_length=20, db_index=True)
 
+class ModelForeign3(models.Model):
+    char_indexed = models.CharField(max_length=20, db_index=True)
+
 class ModelForeignNoResource(models.Model):
     name = models.CharField(max_length=20, db_index=True)
 
 class ModelForeignNoResourceForeign(models.Model):
     foreign = models.ForeignKey(ModelForeignNoResource)
+
+class ModelHasForeign3(models.Model):
+    foreign = models.ForeignKey(ModelForeign3)
 
 class ModelMany(models.Model):
     char_indexed = models.CharField(max_length=20, db_index=True)
@@ -88,9 +94,21 @@ class ResourceTest(TestCaseNoDB):
             use_location = True
 
         @api
+        class ModelForeign3Resource(DjangoModelResource):
+            model = ModelForeign3
+
+        @api
         class ModelForeignNoResourceForeignResource(DjangoModelResource):
             model = ModelForeignNoResourceForeign
             name = 'modelforeignnoresourceforeign'
+
+        @api
+        class ModelHasForeign3Resource(DjangoModelResource):
+            model = ModelHasForeign3
+
+            def serialize_foreign(self, instance, field):
+                resource = self.related_lookup(field)
+                return resource.serialize(getattr(instance, field.name))
 
         @api
         class ModelManyResource(DjangoModelResource):
@@ -945,6 +963,23 @@ class ResourceTest(TestCaseNoDB):
             ],
             'manytomany_id': [1,2,3],
             'resource_uri': '/api/v1/model/1/',
+        }
+
+    def test_serialize_foreign3(self):
+        ModelForeign3.objects.create(id=1, char_indexed='value')
+        ModelHasForeign3.objects.create(id=1, foreign_id=1)
+
+        response = self.client.get(
+            self.api.reverse('modelhasforeign3_single', args=(1,))
+        )
+        assert json.loads(response.content) == {
+            'id': 1,
+            'foreign': {
+                'id': 1,
+                'char_indexed': 'value',
+                'resource_uri': '/api/v1/modelforeign3/1/',
+            },
+            'resource_uri': '/api/v1/modelhasforeign3/1/',
         }
 
     def test_version_field(self):
