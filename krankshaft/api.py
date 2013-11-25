@@ -370,9 +370,7 @@ class API(object):
 
         if self.debug:
             data['exception'] = '%s: %s' % (exc.__name__, inst)
-            data['traceback'] = '\n'.join(
-                traceback.format_exception(*exc_info)
-            )
+            data['traceback'] = traceback.format_exception(*exc_info)
 
         data = self.hook_500(data, request, exc_info)
 
