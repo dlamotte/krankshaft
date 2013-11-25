@@ -8,7 +8,6 @@ try:
 except ImportError:
     from .compat.xact import xact as atomic
 
-# TODO easy way to included serialized data for related/reverse fields
 class DjangoModelResource(object):
     '''
     Expose a Django Model as a RESTful resource.  Default implementation
