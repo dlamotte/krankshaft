@@ -381,7 +381,7 @@ class DjangoModelResource(object):
 
         Abort if the request is not authorized for the instance.
         '''
-        if not request.auth.is_authorized_obj(instance):
+        if not request.auth.is_authorized_object(instance):
             self.api.abort(self.api.challenge(request, request.auth))
 
     def load(self):

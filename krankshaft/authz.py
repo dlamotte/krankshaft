@@ -18,7 +18,7 @@ class Authz(object):
     def __init__(self, require_authned=True):
         self.require_authned = require_authned
 
-    def is_authorized_obj(self, request, authned, obj):
+    def is_authorized_object(self, request, authned, obj):
         return True
 
     def is_authorized_request(self, request, authned):
@@ -39,12 +39,11 @@ class AuthzDjango(Authz):
     Options:
         perms: enable model level permission checking (default: True)
     '''
-    def __init__(self, default_if_no_method=False, perms=True, **kwargs):
+    def __init__(self, perms=True, **kwargs):
         super(AuthzDjango, self).__init__(**kwargs)
-        self.default_if_no_method = default_if_no_method
         self.perms = perms
 
-    def is_authorized_obj(self, request, authned, obj):
+    def is_authorized_object(self, request, authned, obj):
         if self.perms:
             meta = obj._meta
             method = request.method.lower()
@@ -71,10 +70,14 @@ class AuthzDjango(Authz):
                 return False
 
         obj_authz = getattr(obj, 'is_authorized', None)
-        if not obj_authz:
-            return self.default_if_no_method
+        if obj_authz:
+            return obj_authz(request, authned)
 
-        return obj_authz(request, authned)
+        else:
+            return self.is_authorized_object_default(request, authned, obj)
+
+    def is_authorized_object_default(self, request, authned, obj):
+        return False
 
 class AuthzDjangoAnonRead(AuthzDjango):
     '''
@@ -88,6 +91,9 @@ class AuthzDjangoAnonRead(AuthzDjango):
         else:
             return request.method.lower() in self.methods_read
 
+    def is_authorized_object_default(self, request, authned, obj):
+        return request.method.lower() in self.methods_read
+
 class AuthzReadonly(Authz):
     '''
     Read only authorization.  Only HTTP methods considered to be read-only
@@ -98,5 +104,5 @@ class AuthzReadonly(Authz):
             super(AuthzReadonly, self).is_authorized_request(request, authned) \
             and request.method.lower() in self.methods_read
 
-    def is_authorized_obj(self, request, authned, obj):
+    def is_authorized_object(self, request, authned, obj):
         return self.is_authorized_request(request, authned)

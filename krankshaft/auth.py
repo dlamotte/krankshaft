@@ -15,7 +15,7 @@ class Auth(object):
             # request is authorized (depending on your authorization scheme
             # the request may or may not be authenticated)
             obj = ...
-            if auth.is_authorized_obj(obj):
+            if auth.is_authorized_object(obj):
                 # now the request is authorized to operate on the object
             else:
                 # request is not authorized to the object
@@ -92,18 +92,18 @@ class Auth(object):
         '''
         return bool(self.authned)
 
-    def is_authorized_obj(self, obj):
-        '''is_authorized_obj(obj) -> bool
+    def is_authorized_object(self, obj):
+        '''is_authorized_object(obj) -> bool
 
         Test if authorized to operate on object.
         '''
-        return self.authz.is_authorized_obj(self.request, self.authned, obj)
+        return self.authz.is_authorized_object(self.request, self.authned, obj)
 
     def is_authorized_request(self):
         '''is_authorized_request() -> bool
 
         Test if authorized to process request further.  No guarantees are
-        placed on if .is_authorized_obj() will be called ever.
+        placed on if .is_authorized_object() will be called ever.
         '''
         return self.authz.is_authorized_request(self.request, self.authned)
 

@@ -12,7 +12,7 @@ import json
 import pytest
 
 class Authz(AuthzBase):
-    def is_authorized_obj(self, request, authned, obj):
+    def is_authorized_object(self, request, authned, obj):
         return obj.__class__ is not ModelUnauthorized
 
 class Auth(AuthBase):
