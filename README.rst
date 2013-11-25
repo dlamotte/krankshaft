@@ -203,6 +203,7 @@ What works
   with pagination support
 - deep data validation
 - Django ORM based Model Resource (with model serialization/deserialization)
+    - Optimistic Concurrency Control option (``version_field``)
 
 Todo
 ----
