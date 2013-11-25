@@ -545,7 +545,7 @@ class API(object):
             yield view
 
         for api in self.included:
-            for view in api.registered_views:
+            for view, url in api.registry:
                 yield view
 
     def resolve(self, paths):
