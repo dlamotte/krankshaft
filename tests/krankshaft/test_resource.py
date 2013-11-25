@@ -58,7 +58,7 @@ class ModelUnauthorized(models.Model):
 
 class Model(models.Model):
     char_indexed = models.CharField(max_length=20, db_index=True)
-    foreign = models.ForeignKey(ModelForeign)
+    foreign = models.ForeignKey(ModelForeign, null=True)
     manytomany = models.ManyToManyField(ModelMany)
 
 class ModelAllowed(models.Model):
@@ -406,6 +406,23 @@ class ResourceTest(TestCaseNoDB):
             'id': 1,
             'char_indexed': 'value',
             'resource_uri': '/api/v1/modelforeign/1/'
+        }
+
+    def test_get_single_foreign_null(self):
+        Model.objects.create(id=1, foreign=None)
+
+        response = self.client.get(
+            self.api.reverse('model_single', args=(1,)),
+        )
+        assert response.status_code == 200
+        assert json.loads(response.content) == {
+            'id': 1,
+            'char_indexed': '',
+            'foreign': None,
+            'foreign_id': None,
+            'manytomany': [],
+            'manytomany_id': [],
+            'resource_uri': '/api/v1/model/1/',
         }
 
     def test_get_single_missing(self):

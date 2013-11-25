@@ -494,7 +494,7 @@ class DjangoModelResource(object):
         return a URI representing the path to the resource.
         '''
         resource = self.related_lookup(field)
-        if resource:
+        if resource and id is not None:
             return resource.reverse_single(id)
         else:
             return id
