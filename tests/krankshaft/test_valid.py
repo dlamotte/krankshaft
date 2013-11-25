@@ -49,6 +49,12 @@ VQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxMy0xMS0wN1QwOTo1OToxNy0wNjowMI3IBukAAAAASUVO
 RK5CYII=
 '''.splitlines()))))
 
+class MyCharField(models.CharField):
+    pass
+
+class MyChar2Field(models.CharField):
+    pass
+
 class ValidForeign(models.Model):
     name = models.CharField(max_length=20)
 
@@ -96,6 +102,9 @@ class Valid(models.Model):
     time = models.TimeField()
     url = models.URLField()
 
+    mycharfield = MyCharField(max_length=20)
+    mychar2field = MyChar2Field(max_length=20)
+
     foreign = models.ForeignKey(ValidForeign)
     foreign_nullable = models.ForeignKey(ValidForeign2, null=True)
     foreign3 = models.ForeignKey(ValidForeign3)
@@ -118,6 +127,7 @@ class BaseExpecterTest(TestCaseNoDB):
 
     def setUp(self):
         self.expecter = valid.Expecter()
+        self.expecter.register(MyCharField, valid.string_or_none)
 
 class ExpecterTest(BaseExpecterTest):
     def test_expect_simple(self):
@@ -547,13 +557,9 @@ class ValidatorsTest(BaseExpecterTest):
 
 
 class ValidatorsFromFieldTest(BaseExpecterTest):
-    def field(self, name, model=False):
-        kws = {}
-        if model:
-            kws['model'] = Valid
+    def field(self, name):
         return self.expecter.from_field(
             Valid._meta.get_field_by_name(name)[0],
-            **kws
         )
 
     def test_field_id(self):
@@ -717,6 +723,16 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
 
     def test_field_many_to_many_blank(self):
         self.expect(self.field('many_to_many_blank'), [])
+
+    def test_field_mycharfield(self):
+        self.expect(self.field('mycharfield'), 'abc')
+
+    def test_field_mychar2field_unhandled(self):
+        self.assertRaises(
+            self.expecter.ExpectedIssue,
+            self.expecter.from_field,
+            Valid._meta.get_field_by_name('mychar2field')[0],
+        )
 
     def test_field_ip_address(self):
         self.expect(self.field('ip_address'), '192.168.1.1')

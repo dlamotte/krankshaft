@@ -180,6 +180,7 @@ class Expecter(object):
     field_to_validator = {} # setup at end of module
 
     def __init__(self, **opts):
+        self.field_to_validator = self.field_to_validator.copy()
         self.opts = self.options(opts, self.defaults)
 
     def expect(self, expected, data, **opts):
@@ -321,10 +322,18 @@ class Expecter(object):
             other_field = field
             while hasattr(other_field, 'rel') and other_field.rel:
                 other_field = other_field.rel.get_related_field()
+
             validator = self.field_to_validator[other_field.__class__]
 
         else:
-            validator = self.field_to_validator[field.__class__]
+            try:
+                validator = self.field_to_validator[field.__class__]
+            except KeyError:
+                raise self.ExpectedIssue(
+                    'Unable to resolve "%s" to a validator, register your model'
+                    ' field with api.expecter.register(Field, valid.validator)'
+                    % str(field)
+                )
 
         if not field.null:
             validator = no_none(validator)
@@ -358,6 +367,13 @@ class Expecter(object):
             util.defaults(self.shortcuts(opts), defaults),
             self.defaults.keys()
         )
+
+    def register(self, field, validator):
+        '''register(Field, valid.validator)
+
+        Register a validator to be used for a given Field.
+        '''
+        self.field_to_validator[field] = validator
 
     def shortcuts(self, opts):
         '''
