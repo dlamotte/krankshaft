@@ -69,15 +69,18 @@ class AuthzDjango(Authz):
             if perm and not authned.user.has_perm(perm):
                 return False
 
+        return self.is_authorized_object_forward(request, authned, obj)
+
+    def is_authorized_object_default(self, request, authned, obj):
+        return False
+
+    def is_authorized_object_forward(self, request, authned, obj):
         obj_authz = getattr(obj, 'is_authorized', None)
         if obj_authz:
             return obj_authz(request, authned)
 
         else:
             return self.is_authorized_object_default(request, authned, obj)
-
-    def is_authorized_object_default(self, request, authned, obj):
-        return False
 
 class AuthzDjangoAnonRead(AuthzDjango):
     '''
@@ -93,6 +96,13 @@ class AuthzDjangoAnonRead(AuthzDjango):
 
     def is_authorized_object_default(self, request, authned, obj):
         return request.method.lower() in self.methods_read
+
+    def is_authorized_object_forward(self, request, authned, obj):
+        if request.method.lower() in self.methods_read:
+            return True
+        else:
+            return super(AuthzDjangoAnonRead, self) \
+                .is_authorized_object_forward(request, authned, obj)
 
 class AuthzReadonly(Authz):
     '''
