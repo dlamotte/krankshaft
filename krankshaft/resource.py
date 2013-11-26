@@ -1,4 +1,5 @@
 from . import util
+from .exceptions import KrankshaftError
 from .query import DjangoQuery
 from django.core.urlresolvers import reverse
 from django.db import models
@@ -51,6 +52,7 @@ class DjangoModelResource(object):
                         see version_field caveat
 
     '''
+    Error = KrankshaftError
     Query = DjangoQuery
     allowed_methods = None
     allowed_methods_endpoint = None
@@ -76,6 +78,9 @@ class DjangoModelResource(object):
                 for field in self.fields
                 if field.name not in self.excludes
             ])
+
+        if hasattr(self, 'exclude'):
+            raise self.Error('You probably meant to use "excludes"')
 
         self.expected = {}
         self.expected_pk = None

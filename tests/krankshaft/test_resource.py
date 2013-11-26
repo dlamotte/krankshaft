@@ -231,6 +231,13 @@ class ResourceTest(TestCaseNoDB):
         assert response.status_code == 204
         assert response.content == ''
 
+    def test_exclude_error(self):
+        class ModelResource(DjangoModelResource):
+            model = Model
+            exclude = 'anything'
+
+        self.assertRaises(ModelResource.Error, ModelResource)
+
     def test_fetch_invalid_id(self):
         resource, ids = self.api.resolve([
             self.api.reverse('modelother_single', args=('invalid',)),
