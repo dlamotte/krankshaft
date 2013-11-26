@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from datetime import timedelta
+from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
 from django.db import models
 from functools import partial
@@ -114,10 +115,12 @@ class APITest(TestCaseNoDB):
         def fakeview(request):
             return \
                 hasattr(request, 'auth') \
-                and isinstance(request.auth, self.api.Auth)
+                and isinstance(request.auth, self.api.Auth) \
+                and not hasattr(request, 'user')
         fakeview = self.api(fakeview)
 
         request = self.make_request()
+        request.user = AnonymousUser()
         self.assertEqual(hasattr(request, 'auth'), False)
         self.assertEqual(fakeview(request), True)
         self.assertEqual(hasattr(request, 'auth'), False)
