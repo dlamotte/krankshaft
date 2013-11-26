@@ -93,6 +93,7 @@ class API(object):
         self.debug = debug
         self.error = error or self.error
         self.included = []
+        self.included_deep = []
         self.loaded = False
         self.name = name
         self.registry = []
@@ -400,10 +401,12 @@ class API(object):
         response['Content-Type'] += '; charset=utf-8'
         return response
 
-    def include(self, otherapi):
+    def include(self, otherapi, deep=False):
         '''include(otherapi)
 
         Include another API's views/resources in this API's lookup mechanisms.
+
+        If deep is True, any included apis in otherapi will also be included.
         '''
         if otherapi is self:
             raise self.Error('Refusing to include itself')
@@ -411,7 +414,10 @@ class API(object):
         if otherapi in self.included:
             raise self.Error('Refusing to add api twice to included list')
 
-        self.included.append(otherapi)
+        if deep:
+            self.included_deep.append(otherapi)
+        else:
+            self.included.append(otherapi)
 
     def load(self):
         '''load()
@@ -546,6 +552,10 @@ class API(object):
 
         for api in self.included:
             for view, url in api.registry:
+                yield view
+
+        for api in self.included_deep:
+            for view in api.registered_views:
                 yield view
 
     def resolve(self, paths):

@@ -424,6 +424,20 @@ class APITest(TestCaseNoDB):
     def test_include_api1_again(self):
         self.assertRaises(self.api2.Error, self.api2.include, self.api1)
 
+    def test_include_deep(self):
+        api = API('v1')
+        api2 = API('v1')
+        api3 = API('v1')
+
+        api.include(api2, deep=True)
+        api2.include(api3)
+
+        @api3
+        def apiv3view(request):
+            pass
+
+        assert apiv3view in api.registered_views
+
     def test_include_self(self):
         self.assertRaises(self.api2.Error, self.api2.include, self.api2)
 
