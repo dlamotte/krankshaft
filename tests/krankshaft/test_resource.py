@@ -8,8 +8,34 @@ from krankshaft.authn import Authn
 from krankshaft.authz import Authz as AuthzBase
 from krankshaft.resource import DjangoModelResource
 from tests.base import TestCaseNoDB
+import base64
 import json
+import os
 import pytest
+import shutil
+import tempfile
+import unittest
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+IMAGE_JPG = base64.decodestring(''.join('''
+/9j/4AAQSkZJRgABAQEAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkI
+CQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQ
+EBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIA
+AhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEB
+AAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AKOgA//Z
+'''.splitlines()))
+
+IMAGE_JPG_INVALID = base64.decodestring(''.join('''
+/9j/4AAQSkZJRgABAQEAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkI
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+EBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIA
+AhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEB
+AAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AKOgA//Z
+'''.splitlines()))
 
 class Authz(AuthzBase):
     def is_authorized_object(self, request, authned, obj):
@@ -71,6 +97,10 @@ class ModelVersioned(models.Model):
     def save(self, *args, **kwargs):
         self.version += 1
         return super(ModelVersioned, self).save(*args, **kwargs)
+
+class ModelFiles(models.Model):
+    file = models.FileField(max_length=300, upload_to='files/')
+    image = models.ImageField(max_length=300, upload_to='images/')
 
 @pytest.mark.django_db
 class ResourceTest(TestCaseNoDB):
@@ -149,6 +179,10 @@ class ResourceTest(TestCaseNoDB):
         class ModelVersionedResource(DjangoModelResource):
             model = ModelVersioned
             version_field = 'version'
+
+        @api
+        class ModelFilesResource(DjangoModelResource):
+            model = ModelFiles
 
         # only to satisfy coverage (calling load() twice)
         for resource in self.api.registered_resources:
@@ -247,6 +281,71 @@ class ResourceTest(TestCaseNoDB):
             resource.fetch,
             *ids
         )
+
+    def test_files_file(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            with self.settings(MEDIA_ROOT=tmpdir), \
+                 tempfile.NamedTemporaryFile() as tmp:
+                tmp.write('hello world\n')
+                tmp.seek(0)
+                response = self.client.post(
+                    self.api.reverse('modelfiles_list'),
+                    {'file': tmp}
+                )
+
+                assert response.status_code == 200
+                assert json.loads(response.content) == {
+                    'file': 'files/' + os.path.basename(tmp.name),
+                    'file_href': '/media/files/' + os.path.basename(tmp.name),
+                    'id': 1,
+                    'image': '',
+                    'image_href': '',
+                    'resource_uri': '/api/v1/modelfiles/1/',
+                }
+
+                response = self.client.put(
+                    self.api.reverse('modelfiles_single', args=(1,)),
+                    {'file': 'wont change anything'}
+                )
+
+                assert response.status_code == 422
+
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @unittest.skipIf(not Image, 'requires PIL/Pillow')
+    def test_files_image(self):
+        tmpdir = tempfile.mkdtemp()
+        try:
+            with self.settings(MEDIA_ROOT=tmpdir), \
+                 tempfile.NamedTemporaryFile() as tmp:
+                tmp.write(IMAGE_JPG)
+                tmp.seek(0)
+                response = self.client.post(
+                    self.api.reverse('modelfiles_list'),
+                    {'image': tmp}
+                )
+
+                assert response.status_code == 200
+                assert json.loads(response.content) == {
+                    'file': '',
+                    'file_href': '',
+                    'id': 2,
+                    'image': 'images/' + os.path.basename(tmp.name),
+                    'image_href': '/media/images/' + os.path.basename(tmp.name),
+                    'resource_uri': '/api/v1/modelfiles/2/',
+                }
+
+                response = self.client.put(
+                    self.api.reverse('modelfiles_single', args=(2,)),
+                    {'image': 'wont change anything'}
+                )
+
+                assert response.status_code == 422
+
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_get_list(self):
         ModelForeign.objects.create(id=1, char_indexed='value')

@@ -1,6 +1,7 @@
 from . import util
 from .exceptions import KrankshaftError
 from .query import DjangoQuery
+from django.core.files import File
 from django.core.urlresolvers import reverse
 from django.db import models
 
@@ -628,6 +629,15 @@ class DjangoModelResource(object):
                     data[field.name + '_id'] = \
                         getattr(instance, field.name + '_id')
 
+                elif isinstance(field, models.FileField):
+                    try:
+                        data[field.name] = getattr(instance, field.name).name
+                        data[field.name + '_href'] = \
+                            getattr(instance, field.name).url
+                    except ValueError:
+                        data[field.name] = ''
+                        data[field.name + '_href'] = ''
+
                 else:
                     data[field.name] = getattr(instance, field.name)
 
@@ -641,6 +651,14 @@ class DjangoModelResource(object):
         Update an instance with clean()ed data specified in the request.
 
         No further saving is required after this has been called.
+
+        Note: to update models that require uploading content (file/image
+        uploads) you'll need to make the proper request enctype
+        (form-data/multipart).  Without this, the browser will not upload
+        the file.  The other caveat to this is using the API outside of a
+        browser context.  You cannot simply "upload" a file encoded in JSON
+        out of the box.  You must construct a form-data/multipart request and
+        use this encoding to upload a file.
         '''
         manytomany = {}
         for field in self.fields:
@@ -660,6 +678,11 @@ class DjangoModelResource(object):
 
                 elif isinstance(field, models.ForeignKey):
                     setattr(instance, field.name + '_id', clean[field.name])
+
+                elif isinstance(field, models.FileField):
+                    file = clean[field.name]
+                    getattr(instance, field.name) \
+                        .save(file.name, file, save=False)
 
                 else:
                     setattr(instance, field.name, clean[field.name])
