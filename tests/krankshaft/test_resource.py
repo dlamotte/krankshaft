@@ -995,7 +995,24 @@ class ResourceTest(TestCaseNoDB):
 
         assert response.status_code == 403
         assert json.loads(response.content) == {
-            'error': 'You are required to use an indexed field in the order_by'
+            'error': 'There are issues with your query',
+            'invalid': [
+                'You are required to use an indexed field in the order_by',
+            ],
+        }
+
+    def test_query_issues_invalid_field(self):
+        response = self.client.get(
+            self.api.reverse('modelforeign_list')
+            + '?notavalidfield=1'
+        )
+
+        assert response.status_code == 403
+        assert json.loads(response.content) == {
+            'error': 'There are issues with your query',
+            'invalid': [
+                "ModelForeign has no field named 'notavalidfield'",
+            ],
         }
 
     def test_resource_deserialize(self):

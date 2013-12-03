@@ -327,22 +327,26 @@ class DjangoQuery(Query):
                     query = query[offset : offset + limit]
 
         if errors:
-            raise self.Issues(*errors)
+            raise self.Issues(errors)
 
         return query, self.make_meta(limit, offset)
 
     def get_field(self, model, accessor):
-        field = None
-        first = True
-        for attr in accessor:
-            if first:
-                field = model._meta.get_field_by_name(attr)[0]
+        from django.db.models.fields import FieldDoesNotExist
+        try:
+            field = None
+            first = True
+            for attr in accessor:
+                if first:
+                    field = model._meta.get_field_by_name(attr)[0]
 
-            else:
-                field = field.rel.to._meta.get_field_by_name(attr)[0]
-            first = False
+                else:
+                    field = field.rel.to._meta.get_field_by_name(attr)[0]
+                first = False
 
-        return field
+            return field
+        except FieldDoesNotExist as exc:
+            raise self.Issues([str(exc)])
 
     def is_indexed(self, field):
         return field.db_index or field.primary_key

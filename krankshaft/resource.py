@@ -306,7 +306,8 @@ class DjangoModelResource(object):
             qs, meta = query.apply(self.get_query_set(request))
         except self.Query.Issues as exc:
             self.api.abort(self.api.serialize(request, 403, {
-                'error': str(exc)
+                'error': 'There are issues with your query',
+                'invalid': exc.errors,
             }))
 
         instances = list(qs)
@@ -360,7 +361,8 @@ class DjangoModelResource(object):
                 qs, meta = query.apply(qs)
             except self.Query.Issues as exc:
                 self.api.abort(self.api.serialize(request, 403, {
-                    'error': str(exc)
+                    'error': 'There are issues with your query',
+                    'invalid': exc.errors,
                 }))
 
         try:
