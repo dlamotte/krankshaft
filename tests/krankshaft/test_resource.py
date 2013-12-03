@@ -983,6 +983,21 @@ class ResourceTest(TestCaseNoDB):
             },
         }
 
+    def test_query_issues(self):
+        ModelForeign.objects.create(id=1, char_indexed='value')
+        ModelForeign.objects.create(id=2, char_indexed='value1')
+        ModelForeign.objects.create(id=3, char_indexed='value2')
+        ModelForeign.objects.create(id=4, char_indexed='other')
+        response = self.client.get(
+            self.api.reverse('modelforeign_list')
+            + '?order_by=created'
+        )
+
+        assert response.status_code == 403
+        assert json.loads(response.content) == {
+            'error': 'You are required to use an indexed field in the order_by'
+        }
+
     def test_resource_deserialize(self):
         response = self.client.post(
             self.api.reverse('modelmany_list'),

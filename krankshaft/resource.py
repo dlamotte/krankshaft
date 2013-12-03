@@ -301,7 +301,14 @@ class DjangoModelResource(object):
         '''
         if not isinstance(query, self.Query):
             query = self.Query(query)
-        qs, meta = query.apply(self.get_query_set(request))
+
+        try:
+            qs, meta = query.apply(self.get_query_set(request))
+        except self.Query.Issues as exc:
+            self.api.abort(self.api.serialize(request, 403, {
+                'error': str(exc)
+            }))
+
         instances = list(qs)
 
         if meta['next']:
@@ -349,7 +356,12 @@ class DjangoModelResource(object):
         qs = self.get_query_set(request)
         meta = None
         if query:
-            qs, meta = query.apply(qs)
+            try:
+                qs, meta = query.apply(qs)
+            except self.Query.Issues as exc:
+                self.api.abort(self.api.serialize(request, 403, {
+                    'error': str(exc)
+                }))
 
         try:
             instance = qs.get(pk=id)
