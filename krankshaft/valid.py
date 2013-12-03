@@ -345,7 +345,14 @@ class Expecter(object):
             ]))
 
         if hasattr(field, 'max_length') and field.max_length:
-            validator = max_length(validator, field.max_length)
+            if isinstance(field, models.FileField):
+                validator = max_length(validator, field.max_length,
+                    accessor=lambda value: \
+                        len(field.generate_filename(value, value.name))
+                )
+
+            else:
+                validator = max_length(validator, field.max_length)
 
         if field.validators:
             validator = django_validator(validator, *field.validators)
@@ -527,17 +534,21 @@ def list_n_or_more(validator, n):
         prefix='list_%s_or_more_' % n
     )
 
-def max_length(validator, n):
+def max_length(validator, n, accessor=None):
     '''max_length(valid.string, 20) -> string_max_length_20
 
     Wrap a validator that also validates the returned value is less than the
     given max length.
     '''
+    if accessor is None:
+        accessor = len
+
     def max_length_validator(value, expect):
         value = validator(value, expect)
-        if value is not None and len(value) > n:
+        if value is not None and accessor(value) > n:
             raise ValueError(
-                'The value is greater than max length %s: %s' % (n, len(value))
+                'The value is greater than max length %s: %s'
+                % (n, accessor(value))
             )
         return value
 

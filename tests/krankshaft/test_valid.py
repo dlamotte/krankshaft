@@ -86,11 +86,13 @@ class Valid(models.Model):
     decimal = models.DecimalField(decimal_places=1, max_digits=1)
     email = models.EmailField()
     file = models.FileField(max_length=300, upload_to='file/')
+    file_short = models.FileField(max_length=100, upload_to='file-short/')
     file_path = models.FilePathField(max_length=300)
     float = models.FloatField()
     generic_ip_address = models.GenericIPAddressField()
     ip_address = models.IPAddressField()
     image = models.ImageField(max_length=300, upload_to='image/')
+    image_short = models.ImageField(max_length=100, upload_to='image-short/')
     integer = models.IntegerField()
     integer_nullable = models.IntegerField(null=True)
     null_boolean = models.NullBooleanField()
@@ -682,6 +684,12 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
             tmp.seek(0)
             self.expect(self.field('file'), File(tmp))
 
+    def test_field_file_short(self):
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write('a' * 101)
+            tmp.seek(0)
+            self.expect(self.field('file_short'), File(tmp))
+
     def test_field_file_invalid(self):
         self.expect_raises(self.field('file'), StringIO('hello world'), errors=['No django file found'])
 
@@ -744,6 +752,14 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
             IMAGE_PNG.seek(0)
             tmp.seek(0)
             self.expect(self.field('image'), File(tmp))
+
+    @unittest.skipIf(not Image, 'requires PIL/Pillow')
+    def test_field_image_short(self):
+        with tempfile.NamedTemporaryFile() as tmp:
+            tmp.write(IMAGE_PNG.read())
+            IMAGE_PNG.seek(0)
+            tmp.seek(0)
+            self.expect(self.field('image_short'), File(tmp))
 
     def test_field_integer(self):
         self.expect(self.field('integer'), 0)
