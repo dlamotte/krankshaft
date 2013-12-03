@@ -561,7 +561,7 @@ class DjangoModelResource(object):
         ie:
             prefix = r'^%s/' % self.name
             return (
-                ('name_of_url', prefix + r'endpoint/$', {
+                ('endpoint', prefix + r'endpoint/$', {
                     'method': self.view,
                     ...
                 }),
@@ -580,24 +580,74 @@ class DjangoModelResource(object):
             del list_methods['put']
 
         return (
-            (self.endpoint('list'), prefix + '$',
-                self.allowed('list', list_methods)
+            ('list', prefix + '$',
+                self.allowed('list', list_methods),
+                (),
             ),
-            (self.endpoint('single'), prefix + '(?P<id>[^/]+)/$',
+            ('single', prefix + '(?P<id>[^/]+)/$',
                 self.allowed('single', {
                     'delete': self.delete,
                     'get': self.get,
                     'put': self.put,
-                })
+                }),
+                ('id', ),
             ),
-            (self.endpoint('set'), prefix + 'set/(?P<idset>[^/](?:[^/]|;)*)/$',
+            ('set', prefix + 'set/(?P<idset>[^/](?:[^/]|;)*)/$',
                 self.allowed('set', {
                     'delete': self.delete_set,
                     'get': self.get_set,
                     'put': self.put_set,
-                })
+                }),
+                ('idset', ),
             ),
         )
+
+    @property
+    def schema(self):
+        schema = self.api.schema_default(self)
+
+        for endpoint, regex, methods, params in self.routes:
+            schema['endpoint'][endpoint] = {
+                'allow': [
+                    method.upper()
+                    for method in methods.keys()
+                ],
+                'docs': {
+                    method.upper(): view.__doc__
+                    for method, view in methods.iteritems()
+                },
+                'params': params,
+                'url': self.reverse(endpoint, args=[
+                    ':' + param
+                    for param in params
+                ]),
+            }
+
+        schema['fields'] = {}
+        for field in self.fields:
+            d = schema['fields'][field.name] = {
+                'help_text':
+                    field.help_text
+                    if isinstance(field.help_text, basestring)
+                    else '',
+                    # XXX manytomany fields are a functional proxy??
+                'indexed': self.Query.is_indexed(field),
+                'nullable': field.null,
+                'type': field.__class__.__name__,
+            }
+
+            if field.choices:
+                d['choices'] = [
+                    (value, display)
+                    for value, display in field.choices
+                ]
+
+            if hasattr(field, 'max_length'):
+                d['max_length'] = field.max_length
+
+        schema['url'] = self.reverse('list')
+
+        return schema
 
     def serialize(self, instance):
         '''serialize(instance) -> {...}
@@ -725,8 +775,14 @@ class DjangoModelResource(object):
         from django.conf.urls import patterns, include, url
 
         return patterns('', *[
-            url(regex, self.api.wrap(self.make_view(name, methods)), name=name)
-            for name, regex, methods in self.routes
+            url(
+                regex,
+                self.api.wrap(
+                    self.make_view(self.endpoint(endpoint), methods)
+                ),
+                name=self.endpoint(endpoint)
+            )
+            for endpoint, regex, methods, params in self.routes
         ])
 
 

@@ -348,7 +348,8 @@ class DjangoQuery(Query):
         except FieldDoesNotExist as exc:
             raise self.Issues([str(exc)])
 
-    def is_indexed(self, field):
+    @classmethod
+    def is_indexed(cls, field):
         return field.db_index or field.primary_key
 
     def make_meta(self, limit, offset):

@@ -758,6 +758,36 @@ class API(object):
 
         return view(request, *args, **kwargs)
 
+    @property
+    def schema(self):
+        views = {}
+        for view in self.registered_views:
+            try:
+                name = view.name
+            except AttributeError:
+                name = view.__name__
+
+            try:
+                view_schema = view.schema
+            except AttributeError:
+                view_schema = self.schema_default(view)
+
+            views[name] = view_schema
+
+        return {
+            'resources': views,
+        }
+
+    def schema_default(self, view):
+        return {
+            'doc': view.__doc__,
+            'endpoint': {},
+            'url': '',
+        }
+
+    def schema_view(self, request):
+        return self.serialize(request, 200, self.schema)
+
     def serialize(self, request, status, obj,
         content_type=None
         , opts=None
@@ -822,13 +852,27 @@ class API(object):
 
         from django.conf.urls import include, patterns, url
 
-        urlpatterns = patterns('', *urlpatterns)
+        urlpatterns = self.urls_local + patterns('', *urlpatterns)
         if self.name:
             urlpatterns = patterns('',
                 url(r'^%s/' % self.name, include(urlpatterns)),
             )
 
         return urlpatterns
+
+    # TODO "me" endpoint which dumps information about authned?
+    @property
+    def urls_local(self):
+        '''
+        Returns the list of urls for this specific api.
+        '''
+        from django.conf.urls import patterns, url
+
+        return patterns('',
+            url(r'^schema/$', self.wrap(self.schema_view),
+                name=self.endpoint('schema')
+            ),
+        )
 
     def wrap(self, view_or_resource=None, register=False, url=None, **opts):
         '''wrap(myview) -> wrapped_view

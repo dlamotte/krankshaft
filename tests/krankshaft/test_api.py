@@ -80,6 +80,10 @@ class APITest(TestCaseNoDB):
         class Fake2Resource(DjangoModelResource):
             model = Fake2
 
+        @self.api1
+        def plainview(request):
+            return self.api1.response(request, 200)
+
         super(APITest, self)._pre_setup()
 
         # make sure cache is clear
@@ -484,6 +488,72 @@ class APITest(TestCaseNoDB):
             response['Content-Type'].split(';')[0],
             'text/plain'
         )
+
+    def test_schema(self):
+        response = self.client.get('/app1/api/v1/schema/')
+        assert response.status_code == 200
+        assert json.loads(response.content) == {
+            'resources': {
+                'fake1': {
+                    'doc': None,
+                    'endpoint': {
+                        'list': {
+                            'allow': ['PUT', 'POST', 'DELETE', 'GET'],
+                            'docs': {
+                                'DELETE': '\n        Deletes the instances pointed to by the given query (specified by\n        the query string).\n\n            /resource/?field=value\n\n        ',
+                                'GET': '\n        Get the serialized value of a list of objects of a given query\n        (specified as the query string).\n\n            /resource/?field=value\n\n        ',
+                                'POST': '\n        Create a new object.\n\n            /resource/\n\n        ',
+                                'PUT': '\n        Given a single dictionary of fields and values, update all the instances\n        with the given field/values.\n\n        Ideally, a subset of all fields is given.  Enables mass update to\n        an unknown set of objects (those matching a query).\n\n            /resource/?field=value\n\n        '
+                            },
+                            'params': [],
+                            'url': '/app1/api/v1/fake1/'
+                        },
+                        'set': {
+                            'allow': ['PUT', 'DELETE', 'GET'],
+                            'docs': {
+                                'DELETE': '\n        Delete the given set of objects (specified in the path as an id list\n        separated by a semi-colon).\n\n            /resource/set/1;2;3/\n\n        ',
+                                'GET': '\n        Get the serialized value of a set of objects given by a list of ids\n        separated by a semi-colon.\n\n            /resource/set/1;2;3/\n\n        ',
+                                'PUT': '\n        Update a set of objects.\n\n            /resource/set/1;2;3/\n\n        '
+                            },
+                            'params': ['idset'],
+                            'url': '/app1/api/v1/fake1/set/:idset/'
+                        },
+                        'single': {
+                            'allow': ['PUT', 'DELETE', 'GET'],
+                            'docs': {
+                                'DELETE': '\n        Deletes the object pointed to by id.\n\n            /resource/1/\n\n        ',
+                                'GET': '\n        Get the serialized value of an object.\n\n            /resource/1/\n\n        ',
+                                'PUT': '\n        Update an object.\n\n            /resource/1/\n\n        '
+                            },
+                            'params': ['id'],
+                            'url': '/app1/api/v1/fake1/:id/'
+                        },
+                    },
+                    'fields': {
+                        'id': {
+                            'help_text': '',
+                            'indexed': True,
+                            'max_length': None,
+                            'nullable': False,
+                            'type': 'AutoField'
+                        },
+                        'name': {
+                            'help_text': '',
+                            'indexed': False,
+                            'max_length': 20,
+                            'nullable': False,
+                            'type': 'CharField'
+                        }
+                    },
+                    'url': '/app1/api/v1/fake1/'
+                },
+                'plainview': {
+                    'url': '',
+                    'doc': None,
+                    'endpoint': {}
+                },
+            }
+        }
 
     def test_serialize(self):
         data = {'one': 1}
