@@ -205,6 +205,16 @@ What works
 - Django ORM based Model Resource (with model serialization/deserialization)
     - Optimistic Concurrency Control option (``version_field``)
 
+Installation
+------------
+
+Add ``krankshaft`` to ``INSTALLED_APPS``::
+
+    INSTALLED_APPS = (
+        ...
+        'krankshaft',
+    )
+
 Todo
 ----
 
