@@ -150,6 +150,7 @@
 
   // TODO client-side valid library?
 
+  // TODO test update method
   ks.Auth = function(authn, authz) {
     this.authn = authn;
     this.authz = authz;
