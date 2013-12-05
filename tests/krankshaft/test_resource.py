@@ -301,7 +301,7 @@ class ResourceTest(TestCaseNoDB):
                     'id': 1,
                     'image': '',
                     'image_href': '',
-                    'resource_uri': '/api/v1/modelfiles/1/',
+                    '_uri': '/api/v1/modelfiles/1/',
                 }
 
                 response = self.client.put(
@@ -334,7 +334,7 @@ class ResourceTest(TestCaseNoDB):
                     'id': 2,
                     'image': 'images/' + os.path.basename(tmp.name),
                     'image_href': '/media/images/' + os.path.basename(tmp.name),
-                    'resource_uri': '/api/v1/modelfiles/2/',
+                    '_uri': '/api/v1/modelfiles/2/',
                 }
 
                 response = self.client.put(
@@ -370,17 +370,17 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'value',
-                    'resource_uri': '/api/v1/modelforeign/1/'
+                    '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 2,
                     'char_indexed': 'value2',
-                    'resource_uri': '/api/v1/modelforeign/2/'
+                    '_uri': '/api/v1/modelforeign/2/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'value3',
-                    'resource_uri': '/api/v1/modelforeign/3/'
+                    '_uri': '/api/v1/modelforeign/3/'
                 },
             ]
         }
@@ -408,7 +408,7 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'value',
-                    'resource_uri': '/api/v1/modelforeign/1/'
+                    '_uri': '/api/v1/modelforeign/1/'
                 },
             ]
         }
@@ -430,7 +430,7 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 2,
                     'char_indexed': 'value2',
-                    'resource_uri': '/api/v1/modelforeign/2/'
+                    '_uri': '/api/v1/modelforeign/2/'
                 },
             ]
         }
@@ -451,12 +451,12 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'value',
-                    'resource_uri': '/api/v1/modelforeign/1/'
+                    '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'value3',
-                    'resource_uri': '/api/v1/modelforeign/3/'
+                    '_uri': '/api/v1/modelforeign/3/'
                 },
             ]
         }
@@ -511,7 +511,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'value',
-            'resource_uri': '/api/v1/modelforeign/1/'
+            '_uri': '/api/v1/modelforeign/1/'
         }
 
     def test_get_single_foreign_null(self):
@@ -528,7 +528,7 @@ class ResourceTest(TestCaseNoDB):
             'foreign_id': None,
             'manytomany': [],
             'manytomany_id': [],
-            'resource_uri': '/api/v1/model/1/',
+            '_uri': '/api/v1/model/1/',
         }
 
     def test_get_single_missing(self):
@@ -552,7 +552,7 @@ class ResourceTest(TestCaseNoDB):
             'id': 1,
             'foreign': 1,
             'foreign_id': 1,
-            'resource_uri': '/api/v1/modelforeignnoresourceforeign/1/'
+            '_uri': '/api/v1/modelforeignnoresourceforeign/1/'
         }
 
     def test_get_single_defer_char_indexed(self):
@@ -566,7 +566,7 @@ class ResourceTest(TestCaseNoDB):
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'id': 1,
-            'resource_uri': '/api/v1/modelforeign/1/'
+            '_uri': '/api/v1/modelforeign/1/'
         }
 
     def test_get_single_only_id(self):
@@ -580,7 +580,7 @@ class ResourceTest(TestCaseNoDB):
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'id': 1,
-            'resource_uri': '/api/v1/modelforeign/1/'
+            '_uri': '/api/v1/modelforeign/1/'
         }
 
     def test_get_single_unauthorized(self):
@@ -603,7 +603,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'seconds': 100,
-            'resource_uri': '/api/v1/modelother/1/'
+            '_uri': '/api/v1/modelother/1/'
         }
 
         response = self.client.put(
@@ -616,7 +616,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'seconds': 10,
-            'resource_uri': '/api/v1/modelother/1/'
+            '_uri': '/api/v1/modelother/1/'
         }
 
         other = ModelOther.objects.get(id=1)
@@ -639,7 +639,7 @@ class ResourceTest(TestCaseNoDB):
             'foreign_id': 1,
             'manytomany': ['/api/v1/modelmany/1/'],
             'manytomany_id': [1],
-            'resource_uri': '/api/v1/model/1/'
+            '_uri': '/api/v1/model/1/'
         }
 
         response = self.client.put(
@@ -658,7 +658,7 @@ class ResourceTest(TestCaseNoDB):
             'foreign_id': 1,
             'manytomany': ['/api/v1/modelmany/2/'],
             'manytomany_id': [2],
-            'resource_uri': '/api/v1/model/1/'
+            '_uri': '/api/v1/model/1/'
         }
 
     def test_post_list(self):
@@ -673,7 +673,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'posted',
-            'resource_uri': '/api/v1/modelforeign/1/'
+            '_uri': '/api/v1/modelforeign/1/'
         }
 
         instance = ModelForeign.objects.get(id=1)
@@ -697,7 +697,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'posted',
-            'resource_uri': '/api/v2/modelforeign2/1/'
+            '_uri': '/api/v2/modelforeign2/1/'
         }
 
         instance = ModelForeign2.objects.get(id=1)
@@ -728,17 +728,17 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'massupdate',
-                    'resource_uri': '/api/v1/modelforeign/1/'
+                    '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 2,
                     'char_indexed': 'massupdate',
-                    'resource_uri': '/api/v1/modelforeign/2/'
+                    '_uri': '/api/v1/modelforeign/2/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'massupdate',
-                    'resource_uri': '/api/v1/modelforeign/3/'
+                    '_uri': '/api/v1/modelforeign/3/'
                 },
             ],
         }
@@ -778,17 +778,17 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'massupdate',
-                    'resource_uri': '/api/v2/modelforeign2/1/'
+                    '_uri': '/api/v2/modelforeign2/1/'
                 },
                 {
                     'id': 2,
                     'char_indexed': 'massupdate',
-                    'resource_uri': '/api/v2/modelforeign2/2/'
+                    '_uri': '/api/v2/modelforeign2/2/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'massupdate',
-                    'resource_uri': '/api/v2/modelforeign2/3/'
+                    '_uri': '/api/v2/modelforeign2/3/'
                 },
             ],
         }
@@ -823,12 +823,12 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'setupdate1',
-                    'resource_uri': '/api/v1/modelforeign/1/'
+                    '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'setupdate3',
-                    'resource_uri': '/api/v1/modelforeign/3/'
+                    '_uri': '/api/v1/modelforeign/3/'
                 },
             ],
         }
@@ -882,12 +882,12 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'setupdate1',
-                    'resource_uri': '/api/v2/modelforeign2/1/'
+                    '_uri': '/api/v2/modelforeign2/1/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'setupdate3',
-                    'resource_uri': '/api/v2/modelforeign2/3/'
+                    '_uri': '/api/v2/modelforeign2/3/'
                 },
             ],
         }
@@ -930,7 +930,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'updated',
-            'resource_uri': '/api/v1/modelforeign/1/'
+            '_uri': '/api/v1/modelforeign/1/'
         }
 
         instance = ModelForeign.objects.get(id=1)
@@ -955,7 +955,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'updated',
-            'resource_uri': '/api/v2/modelforeign2/1/'
+            '_uri': '/api/v2/modelforeign2/1/'
         }
 
         instance = ModelForeign2.objects.get(id=1)
@@ -1026,7 +1026,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'value',
-            'resource_uri': '/api/v1/modelmany/1/',
+            '_uri': '/api/v1/modelmany/1/',
         }
 
         instance_many = ModelMany.objects.get(id=1)
@@ -1043,7 +1043,7 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'value',
-            'resource_uri': '/api/v1/modelforeign/1/',
+            '_uri': '/api/v1/modelforeign/1/',
         }
 
         instance_foreign = ModelForeign.objects.get(id=1)
@@ -1072,10 +1072,10 @@ class ResourceTest(TestCaseNoDB):
                 '/api/v1/modelmany/1/',
             ],
             'manytomany_id': [1],
-            'resource_uri': '/api/v1/model/1/',
+            '_uri': '/api/v1/model/1/',
         }
 
-    def test_resource_deserialize_invalid_resource_uri(self):
+    def test_resource_deserialize_invalid_uri(self):
         ModelForeign.objects.create(id=1, char_indexed='value')
         Model.objects.create(id=1, char_indexed='value', foreign_id=1)
         response = self.client.put(
@@ -1128,7 +1128,7 @@ class ResourceTest(TestCaseNoDB):
                 '/api/v1/modelmany/3/',
             ],
             'manytomany_id': [1,2,3],
-            'resource_uri': '/api/v1/model/1/',
+            '_uri': '/api/v1/model/1/',
         }
 
     def test_serialize_foreign3(self):
@@ -1143,17 +1143,17 @@ class ResourceTest(TestCaseNoDB):
             'foreign': {
                 'id': 1,
                 'char_indexed': 'value',
-                'resource_uri': '/api/v1/modelforeign3/1/',
+                '_uri': '/api/v1/modelforeign3/1/',
             },
-            'resource_uri': '/api/v1/modelhasforeign3/1/',
+            '_uri': '/api/v1/modelhasforeign3/1/',
         }
 
     def test_version_field(self):
         ModelVersioned.objects.create(id=1, name='initial')
 
-        resource_uri = self.api.reverse('modelversioned_single', args=(1,))
+        _uri = self.api.reverse('modelversioned_single', args=(1,))
         response = self.client.put(
-            resource_uri,
+            _uri,
             json.dumps({
                 'name': 'first',
                 'version': 1,
@@ -1165,11 +1165,11 @@ class ResourceTest(TestCaseNoDB):
             'id': 1,
             'name': 'first',
             'version': 2,
-            'resource_uri': resource_uri,
+            '_uri': _uri,
         }
 
         response = self.client.put(
-            resource_uri,
+            _uri,
             json.dumps({
                 'name': 'invalid',
                 'version': 1,
@@ -1180,7 +1180,7 @@ class ResourceTest(TestCaseNoDB):
         assert response.content == ''
 
         response = self.client.put(
-            resource_uri,
+            _uri,
             json.dumps({
                 'name': 'second',
                 'version': 2,
@@ -1192,15 +1192,15 @@ class ResourceTest(TestCaseNoDB):
             'id': 1,
             'name': 'second',
             'version': 3,
-            'resource_uri': resource_uri,
+            '_uri': _uri,
         }
 
     def test_version_field_missing_version_field(self):
         ModelVersioned.objects.create(id=1, name='initial')
 
-        resource_uri = self.api.reverse('modelversioned_single', args=(1,))
+        _uri = self.api.reverse('modelversioned_single', args=(1,))
         response = self.client.put(
-            resource_uri,
+            _uri,
             json.dumps({
                 'name': 'first',
             }),

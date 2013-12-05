@@ -422,7 +422,7 @@ class APITest(TestCaseNoDB):
             'id': 1,
             'fake1': '/app1/api/v1/fake1/1/',
             'fake1_id': 1,
-            'resource_uri': '/app2/api/v1/fake2/1/',
+            '_uri': '/app2/api/v1/fake2/1/',
         }
 
     def test_include_api1_again(self):

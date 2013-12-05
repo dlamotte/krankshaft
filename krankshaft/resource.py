@@ -589,7 +589,7 @@ class DjangoModelResource(object):
     def reverse_single(self, id):
         '''reverse_single(instance.pk) -> '/resource/1/'
 
-        Shortcut for creating a resource_uri.
+        Shortcut for creating a _uri.
         '''
         return self.reverse('single', args=(id,))
 
@@ -745,7 +745,7 @@ class DjangoModelResource(object):
                 else:
                     data[field.name] = getattr(instance, field.name)
 
-        data['resource_uri'] = self.reverse_single(instance.pk)
+        data['_uri'] = self.reverse_single(instance.pk)
 
         return data
 
