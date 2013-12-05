@@ -10,6 +10,25 @@ try:
 except ImportError:
     from .compat.xact import xact as atomic
 
+# TODO consider subresources instead of prefetch_related()
+#   ie: manytomany: [
+#       '/api/v1/many/1/',
+#       '/api/v1/many/2/',
+#       '/api/v1/many/3/',
+#   ]
+#   vs
+#   manytomany: '/api/v1/resource/1/many/'
+#
+# in a lot of ways its much better because the server side doesn't need to
+# prefetch_related() needlessly and the client gets an easy uri to fetch all
+# the related models (which is difficult and the reason for `manytomany_id`
+# so the client can batch the entire request into a single set/ request)
+#
+# we could make this work with "options", you have a decision to make:
+#   - inline related resources (cant be done with flag a the moment)
+#   - current behavior of prefetch_related() and resource uris to related
+#   - subresource behavior described above
+#
 class DjangoModelResource(object):
     '''
     Expose a Django Model as a RESTful resource.  Default implementation
