@@ -490,7 +490,7 @@ class APITest(TestCaseNoDB):
         )
 
     def test_schema(self):
-        response = self.client.get('/app1/api/v1/schema/')
+        response = self.client.get('/app1/api/v1/')
         assert response.status_code == 200
         assert json.loads(response.content) == {
             'resources': {

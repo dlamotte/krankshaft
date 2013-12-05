@@ -869,7 +869,7 @@ class API(object):
         from django.conf.urls import patterns, url
 
         return patterns('',
-            url(r'^schema/$', self.wrap(self.schema_view),
+            url(r'^$', self.wrap(self.schema_view),
                 name=self.endpoint('schema')
             ),
         )
