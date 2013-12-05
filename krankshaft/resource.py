@@ -29,6 +29,27 @@ except ImportError:
 #   - current behavior of prefetch_related() and resource uris to related
 #   - subresource behavior described above
 #
+# XXX both methods have pros and cons
+#   current:
+#       pros:
+#           - client side caching can help resolve shared manytomany objects
+#       cons:
+#           - some oob knowledge must be used with the manytomany_id field
+#             to construct a url vs using the resource uris in the manytomany
+#             field (on the other hand, you could issue a request for each
+#             uri but that's wasteful/slow)
+#
+#   subresource:
+#       pros:
+#           - for a single object, it's trivial (and HATEOAS) to request
+#             a batch of objects that are related
+#       cons:
+#           - if you have many objects, how do you construct a single request
+#             for all related resources... its non-trivial
+#             (does object and related get merged on the server or client?
+#             it may only be possible on the server...)
+#
+# regardless, at this point, both methods are trivial to implement...
 class DjangoModelResource(object):
     '''
     Expose a Django Model as a RESTful resource.  Default implementation
