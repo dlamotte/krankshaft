@@ -119,9 +119,9 @@
       opts = opts || {};
 
       var ctor = this;
-      var use_cache = opts.use_cache === undefined ? true : opts.use_cache;
+      var cache = opts.cache === undefined ? true : opts.cache;
 
-      if (this.cached === true && use_cache) {
+      if (this.cached === true && cache) {
         var instance = bb.ks.cache.get(this, uri);
         if (instance) {
           return Q.resolve(instance);
