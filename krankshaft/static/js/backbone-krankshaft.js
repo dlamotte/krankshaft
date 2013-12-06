@@ -38,7 +38,7 @@
       });
 
       if (! collection) {
-        collection = new bb.Collection();
+        collection = new bb.ks.Collection();
         collection.model = model;
         bb.ks.cache.cached.push(collection);
       }
@@ -102,7 +102,7 @@
       var me = this;
       var request = bb.Model.prototype.fetch.call(this, opts);
 
-      if (this.constructor.cached === true) {
+      if (this.cached === true) {
         request.done(function() {
           bb.ks.cache.add(me);
         });
@@ -121,7 +121,7 @@
       var ctor = this;
       var cache = opts.ks_cache === undefined ? true : opts.ks_cache;
 
-      if (this.cached === true && cache) {
+      if (this.prototype.cached === true && cache) {
         var instance = bb.ks.cache.get(this, uri);
         if (instance) {
           return Q.resolve(instance);
@@ -153,7 +153,7 @@
         if (model.urlRoot) {
           this.urlRoot = model.urlRoot;
         }
-        else {
+        else if (this.api) {
           this.urlRoot = this.api.reverse(this.resource);
         }
       }
@@ -165,7 +165,7 @@
       var me = this;
       var request = bb.Collection.prototype.fetch.call(this, opts);
 
-      if (this.model.cached === true) {
+      if (this.model.prototype.cached === true) {
         request.done(function() {
           bb.ks.cache.get_or_create_collection(me.model)
             .set(me.models, {remove: false});
