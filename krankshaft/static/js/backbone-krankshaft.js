@@ -119,7 +119,7 @@
       opts = opts || {};
 
       var ctor = this;
-      var cache = opts.cache === undefined ? true : opts.cache;
+      var cache = opts.ks_cache === undefined ? true : opts.ks_cache;
 
       if (this.cached === true && cache) {
         var instance = bb.ks.cache.get(this, uri);
