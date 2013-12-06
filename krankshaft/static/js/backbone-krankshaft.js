@@ -5,113 +5,200 @@
  *
  * This software may be used and distributed according to the terms of the
  * MIT License.
+ *
+ * Depends on: krankshaft.js
  */
 (function($, bb, _, undefined) {
   'use strict';
 
-  bb.ks = {
-    authn: {
-      header: 'Authorization',
-      method: 'APIToken',
-      method_value: function(method, username, secret) {
-        return method + ' ' + username + ':' + secret;
-      },
-      secret: '',
-      update: function(opts) {
-        var authn = _.defaults({}, bb.ks.authn, opts.authn);
+  bb.ks = {};
 
-        if (authn.username && authn.secret) {
-          var headers = {};
-          headers[authn.header] = authn.method_value(
-            authn.method,
-            authn.username,
-            authn.secret
-          );
-
-          opts.headers = _.extend(headers, opts.headers);
-        }
-
-        return opts;
-      },
-      username: ''
+  bb.ks.cache = {
+    add: function(inst) {
+      bb.ks.get_or_create_collection(inst.constructor)
+            .set([inst], {remove: false});
     },
-    cache: {
-      add: function(inst) {
-        bb.ks.get_or_create_collection(inst.constructor)
-              .set([inst], {remove: false});
-      },
-      cached: [],
-      clear: function(model) {
-        if (model) {
-          bb.ks.cache.get_or_create_collection(model).reset();
-        }
-        else {
-          bb.ks.cached = [];
-        }
-      },
-      get: function(model, id) {
-        return
-          bb.ks.get_or_create_collection(model)
-                .get(id);
-      },
-      get_or_create_collection: function(model) {
-        var collection = _.find(bb.ks.cache.cached, function(collection) {
-          return collection.model == model;
-        });
-
-        if (! collection) {
-          collection = new bb.Collection();
-          collection.model = model;
-          bb.ks.cache.cached.push(collection);
-        }
-
-        return collection;
+    cached: [],
+    clear: function(model) {
+      if (model) {
+        bb.ks.cache.get_or_create_collection(model).reset();
+      }
+      else {
+        bb.ks.cached = [];
       }
     },
-    no_conflict: function() {
-      bb.sync = bb.sync_ks_old;
-      bb.Model.prototype.fetch = bb.Model.prototype.fetch_ks_old;
-      bb.Collection.prototype.fetch = bb.Collection.prototype.fetch_ks_old;
+    get: function(model, id) {
+      return
+        bb.ks.get_or_create_collection(model)
+              .get(id);
+    },
+    get_or_create_collection: function(model) {
+      var collection = _.find(bb.ks.cache.cached, function(collection) {
+        return collection.model == model;
+      });
+
+      if (! collection) {
+        collection = new bb.Collection();
+        collection.model = model;
+        bb.ks.cache.cached.push(collection);
+      }
+
+      return collection;
     }
   };
 
-  bb.sync_ks_old = bb.sync;
-  bb.sync_ks = bb.sync = function(method, model, opts) {
-    var update = bb.ks.authn.update;
+  bb.ks.sync = function(method, model, opts) {
+    opts = opts || {};
 
-    if (opts.authn && opts.authn.update) {
-      update = opts.authn.update;
+    if (model.api) {
+      opts = model.api.auth.update(opts);
     }
 
-    return bb.ks_old_sync(method, model, update(opts));
+    return ks.deferred_to_promise(bb.sync(method, model, opts))
+    .then(function(xhr) {
+      var location = xhr.getResponseHeader('Location');
+      if (! xhr.data
+          && location
+          && (
+            xhr.status === 201
+            || xhr.status === 202
+            || xhr.status === 204
+          )
+      ) {
+        return ks.deferred_to_promise(bb.sync('read', model, {
+          url: location,
+          headers: opts.headers
+        }));
+      }
+
+      return xhr;
+    });
   };
 
-  bb.Model.prototype.fetch_ks_old = bb.Model.prototype.fetch;
-  bb.Model.prototype.fetch_ks = bb.Model.prototype.fetch = function(opts) {
-    var me = this;
-    var request = bb.Model.prototype.fetch_ks_old.call(this, opts);
+  /*
+   * Ideally, once you have a krankshaft js API object, you attach it to a
+   * Model like:
+   *
+   *  var MyModel = Backbone.ks.Model.extend({
+   *   api: api,
+   *   resource: 'mymodel'
+   *  });
+   *
+   * This will automatically construct your `urlRoot` for the model as well
+   * as its required for some methods overwritten in this module.
+   */
 
-    if (this.constructor.cached === true) {
-      request.done(function() {
-        bb.ks.cache.add(me);
+  bb.ks.Model = bb.Model.extend({
+    idAttribute: '_uri',
+    sync: bb.ks.sync,
+
+    constructor: function() {
+      this.urlRoot = this.api.reverse(this.resource);
+
+      bb.Model.apply(this, arguments);
+    },
+
+    fetch: function(opts) {
+      var me = this;
+      var request = bb.Model.prototype.fetch.call(this, opts);
+
+      if (this.constructor.cached === true) {
+        request.done(function() {
+          bb.ks.cache.add(me);
+        });
+      }
+
+      return request;
+    },
+
+    url: function() {
+      return this.id || this.urlRoot || null;
+    }
+  }, {
+    fetch: function(uri, opts) {
+      opts = opts || {};
+
+      var ctor = this;
+      var use_cache = opts.use_cache === undefined ? true : opts.use_cache;
+
+      if (this.cached === true && use_cache) {
+        var instance = bb.ks.cache.get(this, uri);
+        if (instance) {
+          return Q.resolve(instance);
+        }
+      }
+
+      return ks.deferred_to_promise($.ajax(_.extend({
+        url: uri
+      }, opts)))
+      .then(function(xhr) {
+        return new ctor(xhr.data);
       });
     }
+  });
 
-    return request;
-  };
+  bb.ks.Collection = bb.Collection.extend({
+    sync: bb.ks.sync,
 
-  bb.Collection.prototype.fetch_ks_old = bb.Collection.prototype.fetch;
-  bb.Collection.prototype.fetch_ks = bb.Collection.prototype.fetch = function(opts) {
-    var me = this;
-    var request = bb.Collection.prototype.fetch_ks_old.call(this, opts);
+    constructor: function() {
+      var model = this.model.prototype;
 
-    if (this.model.cached === true) {
-      request.done(function() {
-        bb.ks.cache.get_or_create_collection(me.model)
-          .set(me.models, {remove: false});
-      });
+      if (! this.api) {
+        this.api = model.api;
+      }
+      if (! this.resource) {
+        this.resource = model.resource;
+      }
+      if (! this.urlRoot) {
+        if (model.urlRoot) {
+          this.urlRoot = model.urlRoot;
+        }
+        else {
+          this.urlRoot = this.api.reverse(this.resource);
+        }
+      }
+
+      bb.Collection.apply(this, arguments);
+    },
+
+    fetch: function(opts) {
+      var me = this;
+      var request = bb.Collection.prototype.fetch.call(this, opts);
+
+      if (this.model.cached === true) {
+        request.done(function() {
+          bb.ks.cache.get_or_create_collection(me.model)
+            .set(me.models, {remove: false});
+        });
+      }
+
+      return request;
+    },
+
+    parse: function(data) {
+      if (! data) {
+        return;
+      }
+
+      if (data.meta) {
+        this.meta = data.meta;
+      }
+
+      return data.objects;
+    },
+
+    url: function(models) {
+      var uri = this.urlRoot;
+
+      if (! models || ! models.length) {
+        return uri;
+      }
+
+      uri = this.api.reverse(this.resource + ':set',
+        _.map(models, function(model) { return model.get('id'); }).join(';')
+      );
+
+      return uri || null;
     }
-
-    return request;
-  };
+  });
 }(jQuery, Backbone, _));

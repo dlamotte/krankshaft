@@ -5,6 +5,8 @@
  *
  * This software may be used and distributed according to the terms of the
  * MIT License.
+ *
+ * Depends on: q.js (https://github.com/kriskowal/q)
  */
 (function($, window, undefined) {
   'use strict';
@@ -195,6 +197,22 @@
       return opts;
     }
   });
+
+  ks.deferred_to_promise = function(dfd) {
+    return Q.promise(function(resolve, reject) {
+      dfd.then(
+        function(data, textStatus, jqXHR) {
+          delete jqXHR.then; // treat xhr as a non-promise
+          jqXHR.data = data;
+          resolve(jqXHR);
+        },
+        function(jqXHR, textStatus, errorThrown) {
+          delete jqXHR.then; // treat xhr as a non-promise
+          reject(jqXHR);
+        }
+      );
+    });
+  };
 
   ks.make_api = function(schema, username, secret) {
     var authn = new ks.Authn(username, secret);
