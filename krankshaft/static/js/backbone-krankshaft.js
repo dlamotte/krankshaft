@@ -15,32 +15,32 @@
 
   bb.ks.cache = {
     add: function(inst) {
-      bb.ks.get_or_create_collection(inst.constructor)
+      this.get_or_create_collection(inst.constructor)
             .set([inst], {remove: false});
     },
     cached: [],
     clear: function(model) {
       if (model) {
-        bb.ks.cache.get_or_create_collection(model).reset();
+        this.get_or_create_collection(model).reset();
       }
       else {
-        bb.ks.cached = [];
+        this.cached = [];
       }
     },
     get: function(model, id) {
-      return
-        bb.ks.get_or_create_collection(model)
-              .get(id);
+      return this.get_or_create_collection(model).get(id);
     },
     get_or_create_collection: function(model) {
-      var collection = _.find(bb.ks.cache.cached, function(collection) {
+      var collection = _.find(this.cached, function(collection) {
         return collection.model == model;
       });
 
       if (! collection) {
-        collection = new bb.ks.Collection();
-        collection.model = model;
-        bb.ks.cache.cached.push(collection);
+        var Collection = bb.ks.Collection.extend({
+          model: model
+        });
+        collection = new Collection();
+        this.cached.push(collection);
       }
 
       return collection;
