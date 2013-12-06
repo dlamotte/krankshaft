@@ -74,6 +74,7 @@ class DjangoModelResource(object):
         excludes        list/tuple of field names to exclude from
                         serialize/deserialize
         fields          list/tuple of field names to serialize/deserialize
+        query_options   passed directly as opts to Query
         use_location    instead of returning a serialized payload on POST/PUT,
                         use a Location header to point to where you may get
                         the representation (default: False)
@@ -340,7 +341,7 @@ class DjangoModelResource(object):
 
         '''
         if not isinstance(query, self.Query):
-            query = self.Query(query)
+            query = self.make_query(query)
 
         try:
             qs, meta = query.apply(self.get_query_set(request))
@@ -392,7 +393,7 @@ class DjangoModelResource(object):
         isn't found or multiple are found when only one was expected.
         '''
         if query and not isinstance(query, self.Query):
-            query = self.Query(query)
+            query = self.make_query(query)
 
         qs = self.get_query_set(request)
         meta = None
@@ -490,6 +491,9 @@ class DjangoModelResource(object):
             )
 
         self.expected_pk = self.expected[self.pk_name]
+
+    def make_query(self, query):
+        return self.Query(query, opts=getattr(self, 'query_options', None))
 
     def make_related_validator(self, field, expected, many=False):
         def related_validator(value, expect):
@@ -975,7 +979,8 @@ class DjangoModelResource(object):
         query, data = self.api.deserialize(request)
 
         # dont modify only part of the query, modify the whole thing
-        query = self.Query(query).without('defer', 'limit', 'offset', 'only')
+        query = self.make_query(query) \
+            .without('defer', 'limit', 'offset', 'only')
 
         with atomic():
             instances, meta = self.fetch_list(request, query)
