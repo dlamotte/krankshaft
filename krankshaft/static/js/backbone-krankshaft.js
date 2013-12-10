@@ -115,19 +115,30 @@
       return this.id || this.urlRoot || null;
     }
   }, {
-    fetch: function(uri, opts) {
+    cached: function(uri, opts) {
       opts = opts || {};
 
-      var ctor = this;
       var cache = opts.ks_cache === undefined ? true : opts.ks_cache;
 
       if (this.prototype.cached === true && cache) {
         var instance = bb.ks.cache.get(this, uri);
         if (instance) {
-          return Q.resolve(instance);
+          return instance;
         }
       }
 
+      return null;
+    },
+
+    fetch: function(uri, opts) {
+      opts = opts || {};
+
+      var cached = this.cached(uri, opts);
+      if (cached) {
+        return Q.resolve(cached);
+      }
+
+      var ctor = this;
       return ks.deferred_to_promise($.ajax(_.extend({
         url: uri
       }, opts)))

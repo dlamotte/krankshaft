@@ -202,13 +202,17 @@
     return Q.promise(function(resolve, reject) {
       dfd.then(
         function(data, textStatus, jqXHR) {
+          var oldthen = jqXHR.then;
           delete jqXHR.then; // treat xhr as a non-promise
           jqXHR.data = data;
           resolve(jqXHR);
+          jqXHR.then = oldthen;
         },
         function(jqXHR, textStatus, errorThrown) {
+          var oldthen = jqXHR.then;
           delete jqXHR.then; // treat xhr as a non-promise
           reject(jqXHR);
+          jqXHR.then = oldthen;
         }
       );
     });
