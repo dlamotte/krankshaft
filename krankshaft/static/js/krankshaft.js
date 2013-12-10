@@ -199,7 +199,7 @@
   });
 
   ks.deferred_to_promise = function(dfd) {
-    return Q.promise(function(resolve, reject) {
+    var promise = Q.promise(function(resolve, reject) {
       dfd.then(
         function(data, textStatus, jqXHR) {
           var oldthen = jqXHR.then;
@@ -216,6 +216,13 @@
         }
       );
     });
+
+    // annotate promise with original deferred (really only makes sense when
+    // deferred is an xhr hence the attribute name) so that the xhr can be
+    // operated on (ie: promise.xhr.abort())
+    promise.xhr = dfd;
+
+    return promise;
   };
 
   ks.make_api = function(schema, username, secret) {
