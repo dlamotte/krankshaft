@@ -217,11 +217,6 @@
       );
     });
 
-    // annotate promise with original deferred (really only makes sense when
-    // deferred is an xhr hence the attribute name) so that the xhr can be
-    // operated on (ie: promise.xhr.abort())
-    promise.xhr = dfd;
-
     return promise;
   };
 
