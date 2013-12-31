@@ -2,7 +2,7 @@ module.exports = function(config) {
   config.set({
     basePath: '',
     browsers: ['PhantomJS'],
-    coverageReporter: {
+    coverageReporter: { // lcov format is for coveralls
       type: 'lcov',
       dir: 'coverage/'
     },
