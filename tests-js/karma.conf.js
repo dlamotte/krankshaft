@@ -1,7 +1,11 @@
 module.exports = function(config) {
   config.set({
     basePath: '',
-    frameworks: ['jasmine'],
+    browsers: ['PhantomJS'],
+    coverageReporter: {
+      type: 'lcov',
+      dir: 'coverage/'
+    },
     files: [
       'lib/jquery.js',
       'lib/underscore.js',
@@ -9,11 +13,11 @@ module.exports = function(config) {
       '../krankshaft/static/js/*.js',
       'spec/*.js'
     ],
-    browsers: ['PhantomJS'],
-    singleRun: true,
-    reporters: ['progress', 'coverage'],
+    frameworks: ['jasmine'],
     preprocessors: {
       '../krankshaft/static/js/*.js': ['coverage']
-    }
+    },
+    reporters: ['progress', 'coverage'],
+    singleRun: true
   });
 };
