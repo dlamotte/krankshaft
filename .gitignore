@@ -4,5 +4,7 @@
 /docs/_build/
 /env/
 /htmlcov/
+/node_modules/
+/tests-js/coverage/
 /*.egg-info/
 /*.egg/
