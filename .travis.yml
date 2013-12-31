@@ -5,6 +5,7 @@ python:
 
 install:
     - pip install .
+    - pip install -r requirements.txt
     - pip install coveralls
     - npm install
     - npm install coveralls
@@ -18,4 +19,5 @@ script:
 
 after_success:
     - coveralls
-    - cat tests-js/coverage/*/lcov.info | node_modules/.bin/coveralls --verbose
+    # XXX coveralls wont combine results into a single result
+    #- cat tests-js/coverage/*/lcov.info | node_modules/.bin/coveralls --verbose
