@@ -422,6 +422,8 @@ class APITest(TestCaseNoDB):
             'id': 1,
             'fake1': '/app1/api/v1/fake1/1/',
             'fake1_id': 1,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/app2/api/v1/fake2/1/',
         }
 

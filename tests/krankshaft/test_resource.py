@@ -301,6 +301,8 @@ class ResourceTest(TestCaseNoDB):
                     'id': 1,
                     'image': '',
                     'image_href': '',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelfiles/1/',
                 }
 
@@ -334,6 +336,8 @@ class ResourceTest(TestCaseNoDB):
                     'id': 2,
                     'image': 'images/' + os.path.basename(tmp.name),
                     'image_href': '/media/images/' + os.path.basename(tmp.name),
+                    '_id': 2,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelfiles/2/',
                 }
 
@@ -370,16 +374,22 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'value',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 2,
                     'char_indexed': 'value2',
+                    '_id': 2,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/2/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'value3',
+                    '_id': 3,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/3/'
                 },
             ]
@@ -408,6 +418,8 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'value',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/1/'
                 },
             ]
@@ -430,6 +442,8 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 2,
                     'char_indexed': 'value2',
+                    '_id': 2,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/2/'
                 },
             ]
@@ -451,11 +465,15 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'value',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'value3',
+                    '_id': 3,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/3/'
                 },
             ]
@@ -511,6 +529,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'value',
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelforeign/1/'
         }
 
@@ -528,6 +548,8 @@ class ResourceTest(TestCaseNoDB):
             'foreign_id': None,
             'manytomany': [],
             'manytomany_id': [],
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/model/1/',
         }
 
@@ -552,6 +574,8 @@ class ResourceTest(TestCaseNoDB):
             'id': 1,
             'foreign': 1,
             'foreign_id': 1,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelforeignnoresourceforeign/1/'
         }
 
@@ -566,6 +590,8 @@ class ResourceTest(TestCaseNoDB):
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'id': 1,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelforeign/1/'
         }
 
@@ -580,6 +606,8 @@ class ResourceTest(TestCaseNoDB):
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'id': 1,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelforeign/1/'
         }
 
@@ -603,6 +631,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'seconds': 100,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelother/1/'
         }
 
@@ -616,6 +646,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'seconds': 10,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelother/1/'
         }
 
@@ -639,6 +671,8 @@ class ResourceTest(TestCaseNoDB):
             'foreign_id': 1,
             'manytomany': ['/api/v1/modelmany/1/'],
             'manytomany_id': [1],
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/model/1/'
         }
 
@@ -658,6 +692,8 @@ class ResourceTest(TestCaseNoDB):
             'foreign_id': 1,
             'manytomany': ['/api/v1/modelmany/2/'],
             'manytomany_id': [2],
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/model/1/'
         }
 
@@ -673,6 +709,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'posted',
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelforeign/1/'
         }
 
@@ -697,6 +735,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'posted',
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v2/modelforeign2/1/'
         }
 
@@ -728,16 +768,22 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'massupdate',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 2,
                     'char_indexed': 'massupdate',
+                    '_id': 2,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/2/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'massupdate',
+                    '_id': 3,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/3/'
                 },
             ],
@@ -778,16 +824,22 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'massupdate',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v2/modelforeign2/1/'
                 },
                 {
                     'id': 2,
                     'char_indexed': 'massupdate',
+                    '_id': 2,
+                    '_pk': 'id',
                     '_uri': '/api/v2/modelforeign2/2/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'massupdate',
+                    '_id': 3,
+                    '_pk': 'id',
                     '_uri': '/api/v2/modelforeign2/3/'
                 },
             ],
@@ -823,11 +875,15 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'setupdate1',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/1/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'setupdate3',
+                    '_id': 3,
+                    '_pk': 'id',
                     '_uri': '/api/v1/modelforeign/3/'
                 },
             ],
@@ -882,11 +938,15 @@ class ResourceTest(TestCaseNoDB):
                 {
                     'id': 1,
                     'char_indexed': 'setupdate1',
+                    '_id': 1,
+                    '_pk': 'id',
                     '_uri': '/api/v2/modelforeign2/1/'
                 },
                 {
                     'id': 3,
                     'char_indexed': 'setupdate3',
+                    '_id': 3,
+                    '_pk': 'id',
                     '_uri': '/api/v2/modelforeign2/3/'
                 },
             ],
@@ -930,6 +990,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'updated',
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelforeign/1/'
         }
 
@@ -955,6 +1017,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'updated',
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v2/modelforeign2/1/'
         }
 
@@ -1026,6 +1090,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'value',
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelmany/1/',
         }
 
@@ -1043,6 +1109,8 @@ class ResourceTest(TestCaseNoDB):
         assert json.loads(response.content) == {
             'id': 1,
             'char_indexed': 'value',
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelforeign/1/',
         }
 
@@ -1072,6 +1140,8 @@ class ResourceTest(TestCaseNoDB):
                 '/api/v1/modelmany/1/',
             ],
             'manytomany_id': [1],
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/model/1/',
         }
 
@@ -1128,6 +1198,8 @@ class ResourceTest(TestCaseNoDB):
                 '/api/v1/modelmany/3/',
             ],
             'manytomany_id': [1,2,3],
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/model/1/',
         }
 
@@ -1143,8 +1215,12 @@ class ResourceTest(TestCaseNoDB):
             'foreign': {
                 'id': 1,
                 'char_indexed': 'value',
+                '_id': 1,
+                '_pk': 'id',
                 '_uri': '/api/v1/modelforeign3/1/',
             },
+            '_id': 1,
+            '_pk': 'id',
             '_uri': '/api/v1/modelhasforeign3/1/',
         }
 
@@ -1165,6 +1241,8 @@ class ResourceTest(TestCaseNoDB):
             'id': 1,
             'name': 'first',
             'version': 2,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': _uri,
         }
 
@@ -1192,6 +1270,8 @@ class ResourceTest(TestCaseNoDB):
             'id': 1,
             'name': 'second',
             'version': 3,
+            '_id': 1,
+            '_pk': 'id',
             '_uri': _uri,
         }
 

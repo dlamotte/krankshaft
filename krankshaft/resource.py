@@ -749,6 +749,8 @@ class DjangoModelResource(object):
                 else:
                     data[field.name] = getattr(instance, field.name)
 
+        data['_id'] = instance.pk
+        data['_pk'] = self.pk_name
         data['_uri'] = self.reverse_single(instance.pk)
 
         return data
