@@ -343,9 +343,9 @@
       };
 
       var isNew = this.at(0).isNew();
-      var allSameNewness = this.reduce(function(memo, model) {
-        return model.isNew() === memo;
-      }, isNew);
+      var allSameNewness = this.every(function(model) {
+        return model.isNew() === isNew;
+      });
 
       if (! allSameNewness) {
         throw new Error('All models must have same isNew() state');
