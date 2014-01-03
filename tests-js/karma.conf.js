@@ -8,6 +8,7 @@ module.exports = function(config) {
     },
     files: [
       'lib/jquery.js',
+      'lib/q.js',
       'lib/underscore.js',
       'lib/backbone.js',
       '../krankshaft/static/js/*.js',
