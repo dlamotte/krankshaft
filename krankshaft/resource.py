@@ -784,7 +784,8 @@ class DjangoModelResource(object):
             else:
                 if isinstance(field, models.ManyToManyField):
                     resource = self.related_lookup(field)
-                    manytomany[field] = resource.fetch(*clean[field.name])
+                    if resource:
+                        manytomany[field] = resource.fetch(*clean[field.name])
 
                 elif isinstance(field, models.ForeignKey):
                     setattr(instance, field.name + '_id', clean[field.name])
@@ -1081,8 +1082,7 @@ class DjangoModelResource(object):
 
             for obj in clean:
                 id = obj[self.pk_name]
-                instance = instance_lookup[id]
-                self.deserialize(request, obj, instance)
+                self.update(instance_lookup[id], obj)
 
         if self.use_location:
             return self.api.response(request, 204,
