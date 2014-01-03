@@ -201,15 +201,19 @@
     url: function(models) {
       var uri = this.urlRoot;
 
-      if (! models || ! models.length) {
+      if (models === undefined) {
+        models = this.models;
+      }
+
+      if (! models.length) {
         return uri;
       }
 
       uri = this.api.reverse(this.resource + ':set',
-        _.map(models, function(model) { return model.get('id'); }).join(';')
+        _.map(models, function(model) { return model.get('_id'); }).join(';')
       );
 
-      return uri || null;
+      return uri;
     }
   });
 }(jQuery, Backbone, _));
