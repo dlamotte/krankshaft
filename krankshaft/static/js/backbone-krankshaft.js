@@ -172,6 +172,52 @@
       bb.Collection.apply(this, arguments);
     },
 
+    destroy: function(options) {
+      if (this.size() === 0) {
+        return false;
+      }
+
+      options = options ? _.clone(options) : {};
+      var collection = this;
+      var success = options.success;
+
+      var destroy = function(model) {
+        model.trigger('destroy', model, model.collection, options);
+      };
+
+      options.success = function(resp) {
+        if (options.wait) {
+          collection.each(destroy);
+        }
+
+        if (success) {
+          success(collection, resp, options);
+        }
+
+        collection.each(function(model) {
+          if (! model.isNew()) {
+            model.trigger('sync', model, resp, options);
+          }
+        });
+      };
+
+      var error = options.error;
+      options.error = function(resp) {
+        if (error) {
+          error(collection, resp, options);
+        }
+        collection.each(function(model) {
+          model.trigger('error', model, resp, options);
+        });
+      };
+
+      var xhr = this.sync('delete', this, options);
+      if (! options.wait) {
+        collection.each(destroy);
+      }
+      return xhr;
+    },
+
     fetch: function(opts) {
       var me = this;
       var request = bb.Collection.prototype.fetch.call(this, opts);
@@ -196,6 +242,127 @@
       }
 
       return data.objects;
+    },
+
+    save: function(key, val, options) {
+      var attrs, method, xhr, tmpattributes;
+
+      if (this.size() === 0) {
+        return false;
+      }
+
+      tmpattributes = this.reduce(function(memo, model) {
+        memo[model.id] = model.attributes;
+        return memo;
+      }, {});
+
+      // Handle both `"key", value` and `{key: value}` -style arguments.
+      if (key == null || typeof key === 'object') {
+        attrs = key;
+        options = val;
+      } else {
+        (attrs = {})[key] = val;
+      }
+
+      options = _.extend({validate: true}, options);
+
+      var invalid = false;
+      this.each(function(model) {
+        if (! model._validate(attrs, options)) {
+          invalid = true;
+        }
+      });
+
+      if (invalid) {
+        return false;
+      }
+
+      if (attrs) {
+        if (options.wait) {
+          // Set temporary attributes if `{wait: true}`.
+          this.each(function(model) {
+            model.attributes = _.extend({}, model.attributes, attrs);
+          });
+        }
+        else {
+          // If we're not waiting and attributes exist, save acts as
+          // `set(attr).save(null, opts)` with validation. Otherwise, check if
+          // the model will be valid when the attributes, if any, are set.
+          this.each(function(model) {
+            if (! model.set(attrs, options)) {
+              throw new Error('Unhandled issue setting attrs');
+            }
+          });
+        }
+      }
+
+      // After a successful server-side save, the client is (optionally)
+      // updated with the server-side state.
+      if (options.parse === void 0) options.parse = true;
+
+      var collection = this;
+      var success = options.success;
+      options.success = function(resp) {
+        var serverAttrsByID = _.reduce(
+          collection.parse(resp, options),
+          function(memo, attrs) {
+            memo[attrs[collection.model.prototype.idAttribute]] = attrs;
+            return memo;
+          },
+          {}
+        );
+
+        collection.each(function(model) {
+          // Ensure attributes are restored during synchronous saves.
+          model.attributes = tmpattributes[model.id];
+
+          var serverAttrs = model.parse(serverAttrsByID[model.id], options);
+          if (options.wait) {
+            serverAttrs = _.extend({}, attrs, serverAttrs);
+          }
+          if (_.isObject(serverAttrs)) {
+            model.set(serverAttrs, options);
+          }
+        });
+
+        if (success) success(collection, resp, options);
+
+        collection.each(function(model) {
+          model.trigger('sync', model, resp, options);
+        });
+      };
+
+      var error = options.error;
+      options.error = function(resp) {
+        if (error) {
+          error(collection, resp, options);
+        }
+        collection.each(function(model) {
+          model.trigger('error', model, resp, options);
+        });
+      };
+
+      var isNew = this.at(0).isNew();
+      var allSameNewness = this.reduce(function(memo, model) {
+        return model.isNew() === memo;
+      }, isNew);
+
+      if (! allSameNewness) {
+        throw new Error('All models must have same isNew() state');
+      }
+
+      method = isNew ? 'create' : (options.patch ? 'patch' : 'update');
+      if (method === 'patch') options.attrs = attrs;
+      xhr = this.sync(method, this, options);
+
+      // Restore attributes.
+      if (attrs && options.wait) {
+        this.each(function(model) {
+          model.attributes = tmpattributes[model.id];
+        });
+      }
+
+      return xhr;
     },
 
     url: function(models) {
