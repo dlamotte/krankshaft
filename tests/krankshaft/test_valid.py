@@ -74,13 +74,14 @@ class Valid(models.Model):
     #id = models.AutoField()
     big_integer = models.BigIntegerField()
     boolean = models.BooleanField()
-    char_max_20 = models.CharField(max_length=20)
+    char_max_20 = models.CharField(max_length=20, blank=True)
     char_max_20_choices = models.CharField(max_length=20, choices=(
         ('a', 'A'),
         ('b', 'B'),
         ('c', 'C'),
     ))
     csv_integer = models.CommaSeparatedIntegerField(max_length=20)
+    csv_integer_blank = models.CommaSeparatedIntegerField(max_length=20, blank=True)
     date = models.DateField()
     datetime = models.DateTimeField()
     decimal = models.DecimalField(decimal_places=1, max_digits=1)
@@ -186,13 +187,13 @@ class ExpecterTest(BaseExpecterTest):
     def test_expect_list_zero_or_more_multiple_validation_errors(self):
         self.expect_raises([valid.int], ['a', None, 1], errors={
             0: ["invalid literal for int() with base 10: 'a'"],
-            1: ['int does not accept None'],
+            1: ['int_no_none does not accept None'],
         })
 
     def test_expect_list_exact_multiple_validation_errors(self):
         self.expect_raises([valid.int, valid.int, valid.int], ['a', None, 1], errors={
             0: ["invalid literal for int() with base 10: 'a'"],
-            1: ['int does not accept None'],
+            1: ['int_no_none does not accept None'],
         })
 
     def test_expect_list_unbalanced_lists(self):
@@ -239,7 +240,7 @@ class ValidatorsTest(BaseExpecterTest):
 
     def test_bool_with_none(self):
         self.expect_raises(valid.bool, None,
-            errors=['bool_or_none does not accept None']
+            errors=['bool_or_none_no_none does not accept None']
         )
 
     def test_bool_or_none_with_none(self):
@@ -258,7 +259,7 @@ class ValidatorsTest(BaseExpecterTest):
 
     def test_date_with_none(self):
         self.expect_raises(valid.date, None,
-            errors=['date_or_none does not accept None']
+            errors=['date_or_none_no_none does not accept None']
         )
 
     def test_date_invalid_date(self):
@@ -278,7 +279,7 @@ class ValidatorsTest(BaseExpecterTest):
 
     def test_datetime_with_none(self):
         self.expect_raises(valid.datetime, None,
-            errors=['datetime_or_none does not accept None']
+            errors=['datetime_or_none_no_none does not accept None']
         )
 
     def test_datetime_invalid_datetime(self):
@@ -294,7 +295,7 @@ class ValidatorsTest(BaseExpecterTest):
 
     def test_django_file_with_none(self):
         self.expect_raises(valid.django_file, None,
-            errors=['django_file_or_none does not accept None']
+            errors=['django_file_or_none_no_none does not accept None']
         )
 
     def test_django_file_or_none_with_none(self):
@@ -333,7 +334,7 @@ class ValidatorsTest(BaseExpecterTest):
     @unittest.skipIf(not Image, 'requires PIL/Pillow')
     def test_django_image_with_none(self):
         self.expect_raises(valid.django_image, None,
-            errors=['django_image_or_none does not accept None']
+            errors=['django_image_or_none_no_none does not accept None']
         )
 
     @unittest.skipIf(not Image, 'requires PIL/Pillow')
@@ -369,7 +370,7 @@ class ValidatorsTest(BaseExpecterTest):
 
     def test_email_with_none(self):
         self.expect_raises(valid.email, None,
-            errors=['string_or_none does not accept None']
+            errors=['string_or_none_no_none does not accept None']
         )
 
     def test_email_invalid(self):
@@ -387,7 +388,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect(valid.float, '0.1', .1)
 
     def test_float_with_none(self):
-        self.expect_raises(valid.float, None, errors=['float does not accept None'])
+        self.expect_raises(valid.float, None, errors=['float_no_none does not accept None'])
 
     def test_float_invalid(self):
         self.expect_raises(valid.float, 'a', errors=['could not convert string to float: a'])
@@ -405,7 +406,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect_raises(valid.int, 'a', errors=["invalid literal for int() with base 10: 'a'"])
 
     def test_int_with_none(self):
-        self.expect_raises(valid.int, None, errors=['int does not accept None'])
+        self.expect_raises(valid.int, None, errors=['int_no_none does not accept None'])
 
     def test_int_or_none(self):
         self.expect(valid.int_or_none, 1)
@@ -432,7 +433,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect_raises(valid.int_range(None, 10), 11, errors=['The value is not within the range None <= 11 <= 10'])
 
     def test_int_range_invalid_value(self):
-        self.expect_raises(valid.int_range(0, 10), None, errors=['int does not accept None'])
+        self.expect_raises(valid.int_range(0, 10), None, errors=['int_no_none does not accept None'])
 
     def test_int_range_invalid_range_high(self):
         self.expect_raises(valid.int_range(0, 10), 11, errors=['The value is not within the range 0 <= 11 <= 10'])
@@ -480,7 +481,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect_raises(valid.int_csv, 'a,2,3', errors={0: ["invalid literal for int() with base 10: 'a'"]})
 
     def test_int_csv_with_none(self):
-        self.expect_raises(valid.int_csv, None, errors=['int_no_none_csv does not accept None'])
+        self.expect_raises(valid.int_csv, None, errors=['int_no_none_csv_no_none does not accept None'])
 
     def test_int_csv_or_none_with_none(self):
         self.expect(valid.int_csv_or_none, None)
@@ -504,7 +505,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect(valid.slug, 'HELLO WORLD', 'hello-world')
 
     def test_slug_with_none(self):
-        self.expect_raises(valid.slug, None, errors=['slug_or_none does not accept None'])
+        self.expect_raises(valid.slug, None, errors=['slug_or_none_no_none does not accept None'])
 
     def test_slug_or_none_with_none(self):
         self.expect(valid.slug_or_none, None)
@@ -522,7 +523,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect_raises(valid.string, [], errors=["Expected string, saw: <type 'list'>"])
 
     def test_string_with_none(self):
-        self.expect_raises(valid.string, None, errors=['string_or_none does not accept None'])
+        self.expect_raises(valid.string, None, errors=['string_or_none_no_none does not accept None'])
 
     def test_string_max_length(self):
         self.expect(valid.string_max_length(1), '')
@@ -531,7 +532,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect_raises(valid.string_max_length(1), 'aa', errors=['The value is greater than max length 1: 2'])
 
     def test_string_max_length_with_none(self):
-        self.expect_raises(valid.string_max_length(1), None, errors=['string_or_none does not accept None'])
+        self.expect_raises(valid.string_max_length(1), None, errors=['string_or_none_no_none does not accept None'])
 
     def test_string_or_none_with_none(self):
         self.expect(valid.string_or_none, None)
@@ -549,7 +550,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect(valid.time, '15:53:21', time(15, 53, 21))
 
     def test_time_with_none(self):
-        self.expect_raises(valid.time, None, errors=['time_or_none does not accept None'])
+        self.expect_raises(valid.time, None, errors=['time_or_none_no_none does not accept None'])
 
     def test_time_invalid_time(self):
         self.expect_raises(valid.time, '15:53:99', errors=['second must be in 0..59'])
@@ -572,6 +573,9 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
 
     def test_field_id_invalid_low(self):
         self.expect_raises(self.field('id'), 0, errors=['The value is not within the range 1 <= 0 <= 2147483647'])
+
+    def test_field_id_invalid_empty(self):
+        self.expect_raises(self.field('id'), '', errors=['int_or_none_range_1_to_2147483647_no_none_blank_not does not accept blank values'])
 
     def test_field_big_integer(self):
         self.expect(self.field('big_integer'), 0)
@@ -598,7 +602,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect(self.field('boolean'), 'yes', True)
 
     def test_field_boolean_with_none(self):
-        self.expect_raises(self.field('boolean'), None, errors=['bool_or_none does not accept None'])
+        self.expect_raises(self.field('boolean'), None, errors=['bool_or_none_no_none does not accept None'])
 
     def test_field_char_max_20_empty(self):
         self.expect(self.field('char_max_20'), '')
@@ -607,10 +611,10 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect(self.field('char_max_20'), 'a' * 20)
 
     def test_field_char_max_20_invalid_high(self):
-        self.expect_raises(self.field('char_max_20'), 'a' * 21, errors=['The value is greater than max length 20: 21'])
+        self.expect_raises(self.field('char_max_20'), 'a' * 21, errors=['Ensure this value has at most 20 characters (it has 21).'])
 
     def test_field_char_max_20_invalid_with_none(self):
-        self.expect_raises(self.field('char_max_20'), None, errors=['string_or_none does not accept None'])
+        self.expect_raises(self.field('char_max_20'), None, errors=['string_or_none_django_validator_no_none does not accept None'])
 
     def test_field_char_max_20_choices_empty(self):
         self.expect_raises(self.field('char_max_20_choices'), '', errors=['The value is not a valid choice: '])
@@ -622,13 +626,16 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('char_max_20_choices'), 'd', errors=['The value is not a valid choice: d'])
 
     def test_field_char_max_20_choices_invalid_with_none(self):
-        self.expect_raises(self.field('char_max_20_choices'), None, errors=['string_or_none does not accept None'])
+        self.expect_raises(self.field('char_max_20_choices'), None, errors=['string_or_none_django_validator_no_none does not accept None'])
 
     def test_field_csv_integer_integer(self):
         self.expect_raises(self.field('csv_integer'), 1, errors=["Expected string, saw: <type 'int'>"])
 
     def test_field_csv_integer_string_integer(self):
         self.expect(self.field('csv_integer'), '1')
+
+    def test_field_csv_integer_csv_blank(self):
+        self.expect_raises(self.field('csv_integer'), '')
 
     def test_field_csv_integer_csv_int(self):
         self.expect(self.field('csv_integer'), '1,1')
@@ -637,7 +644,25 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('csv_integer'), '1,1,a', errors={2: ["invalid literal for int() with base 10: 'a'"]})
 
     def test_field_csv_integer_invalid_with_none(self):
-        self.expect_raises(self.field('csv_integer'), None, errors=['int_no_none_csv does not accept None'])
+        self.expect_raises(self.field('csv_integer'), None, errors=['int_no_none_csv_django_validator_no_none does not accept None'])
+
+    def test_field_csv_integer_blank_integer(self):
+        self.expect_raises(self.field('csv_integer_blank'), 1, errors=["Expected string, saw: <type 'int'>"])
+
+    def test_field_csv_integer_blank_string_integer(self):
+        self.expect(self.field('csv_integer_blank'), '1')
+
+    def test_field_csv_integer_blank_csv_blank(self):
+        self.expect(self.field('csv_integer_blank'), '')
+
+    def test_field_csv_integer_blank_csv_int(self):
+        self.expect(self.field('csv_integer_blank'), '1,1')
+
+    def test_field_csv_integer_blank_invalid(self):
+        self.expect_raises(self.field('csv_integer_blank'), '1,1,a', errors={2: ["invalid literal for int() with base 10: 'a'"]})
+
+    def test_field_csv_integer_blank_invalid_with_none(self):
+        self.expect_raises(self.field('csv_integer_blank'), None, errors=['int_no_none_csv_django_validator_no_none does not accept None'])
 
     def test_field_date(self):
         self.expect(self.field('date'), '2013-10-07', date(2013, 10, 7))
@@ -649,7 +674,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('date'), '2013-10-99', errors=['day is out of range for month'])
 
     def test_field_date_with_none(self):
-        self.expect_raises(self.field('date'), None, errors=['date_or_none does not accept None'])
+        self.expect_raises(self.field('date'), None, errors=['date_or_none_no_none does not accept None'])
 
     def test_field_datetime(self):
         self.expect(self.field('datetime'), '2013-10-07 15:21:22', datetime(2013, 10, 7, 15, 21, 22))
@@ -661,13 +686,13 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('datetime'), '2013-10-99 15:21:22', errors=['day is out of range for month'])
 
     def test_field_datetime_with_none(self):
-        self.expect_raises(self.field('datetime'), None, errors=['datetime_or_none does not accept None'])
+        self.expect_raises(self.field('datetime'), None, errors=['datetime_or_none_no_none does not accept None'])
 
     def test_field_decimal(self):
         self.expect(self.field('decimal'), '1.1')
 
     def test_field_decimal_with_none(self):
-        self.expect_raises(self.field('decimal'), None, errors=['string_or_none does not accept None'])
+        self.expect_raises(self.field('decimal'), None, errors=['string_or_none_no_none does not accept None'])
 
     def test_field_email(self):
         self.expect(self.field('email'), 'me@somewhere.com')
@@ -676,7 +701,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('email'), 'mesomewhere.com', errors=['Enter a valid e-mail address.'])
 
     def test_field_email_with_none(self):
-        self.expect_raises(self.field('email'), None, errors=['string_or_none_django_validator does not accept None'])
+        self.expect_raises(self.field('email'), None, errors=['string_or_none_django_validator_django_validator_no_none does not accept None'])
 
     def test_field_file(self):
         with tempfile.NamedTemporaryFile() as tmp:
@@ -694,7 +719,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('file'), StringIO('hello world'), errors=['No django file found'])
 
     def test_field_file_with_none(self):
-        self.expect_raises(self.field('file'), None, errors=['django_file_or_none does not accept None'])
+        self.expect_raises(self.field('file'), None, errors=['django_file_or_none_no_none does not accept None'])
 
     def test_field_file_path(self):
         self.expect(self.field('file_path'), '/a/path/')
@@ -706,7 +731,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect(self.field('foreign'), 1)
 
     def test_field_foreign_with_none(self):
-        self.expect_raises(self.field('foreign'), None, errors=['int_or_none_range_1_to_2147483647 does not accept None'])
+        self.expect_raises(self.field('foreign'), None, errors=['int_or_none_range_1_to_2147483647_no_none does not accept None'])
 
     def test_field_foreign_nullable(self):
         self.expect(self.field('foreign_nullable'), None)
@@ -771,7 +796,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('integer'), 21474836471, errors=['The value is not within the range -2147483648 <= 21474836471 <= 2147483647'])
 
     def test_field_integer_with_none(self):
-        self.expect_raises(self.field('integer'), None, errors=['int_or_none_range_-2147483648_to_2147483647 does not accept None'])
+        self.expect_raises(self.field('integer'), None, errors=['int_or_none_range_-2147483648_to_2147483647_no_none does not accept None'])
 
     def test_field_integer_nullable_with_none(self):
         self.expect(self.field('integer_nullable'), None)
@@ -804,7 +829,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('positive_integer'), -1, errors=['The value is not within the range 0 <= -1 <= 2147483647'])
 
     def test_field_positive_integer_with_none(self):
-        self.expect_raises(self.field('positive_integer'), None, errors=['int_or_none_range_0_to_2147483647 does not accept None'])
+        self.expect_raises(self.field('positive_integer'), None, errors=['int_or_none_range_0_to_2147483647_no_none does not accept None'])
 
     def test_field_positive_integer_invalid_high(self):
         self.expect_raises(self.field('positive_integer'), 2147483648, errors=['The value is not within the range 0 <= 2147483648 <= 2147483647'])
@@ -816,7 +841,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('positive_small_integer'), -1, errors=['The value is not within the range 0 <= -1 <= 32767'])
 
     def test_field_positive_small_integer_with_none(self):
-        self.expect_raises(self.field('positive_small_integer'), None, errors=['int_or_none_range_0_to_32767 does not accept None'])
+        self.expect_raises(self.field('positive_small_integer'), None, errors=['int_or_none_range_0_to_32767_no_none does not accept None'])
 
     def test_field_positive_small_integer_invalid_high(self):
         self.expect_raises(self.field('positive_small_integer'), 32768, errors=['The value is not within the range 0 <= 32768 <= 32767'])
@@ -834,13 +859,13 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('small_integer'), -32769, errors=['The value is not within the range -32768 <= -32769 <= 32767'])
 
     def test_field_small_integer_invalid_with_none(self):
-        self.expect_raises(self.field('small_integer'), None, errors=['int_or_none_range_-32768_to_32767 does not accept None'])
+        self.expect_raises(self.field('small_integer'), None, errors=['int_or_none_range_-32768_to_32767_no_none does not accept None'])
 
     def test_field_text(self):
         self.expect(self.field('text'), 'hello world')
 
     def test_field_text_with_none(self):
-        self.expect_raises(self.field('text'), None, errors=['string_or_none does not accept None'])
+        self.expect_raises(self.field('text'), None, errors=['string_or_none_no_none does not accept None'])
 
     def test_field_time(self):
         self.expect(self.field('time'), '15:38:21', time(15, 38, 21))
@@ -852,7 +877,7 @@ class ValidatorsFromFieldTest(BaseExpecterTest):
         self.expect_raises(self.field('time'), 'aa', errors=['Could not parse time: aa'])
 
     def test_field_time_with_none(self):
-        self.expect_raises(self.field('time'), None, errors=['time_or_none does not accept None'])
+        self.expect_raises(self.field('time'), None, errors=['time_or_none_no_none does not accept None'])
 
     def test_field_url(self):
         self.expect(self.field('url'), 'https://google.com/')

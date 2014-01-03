@@ -335,8 +335,26 @@ class Expecter(object):
                     % str(field)
                 )
 
+        # apply django validators early (or late in the validation stack)
+        # this way if a django validator cannot handle a blank value but we
+        # properly handle it with our blank validator, it wont blow up in
+        # django validator incorrectly
+        if field.validators:
+            validator = django_validator(validator, *field.validators)
+
         if not field.null:
             validator = no_none(validator)
+
+        if field.primary_key:
+            validator = blank_not(validator)
+
+        elif field.blank:
+            validator = blank(validator)
+
+        elif not field.choices:
+            # choices overrides what values are allowed, if the blank value
+            # is a valid choice, let it make that decision
+            validator = blank_not(validator)
 
         if field.choices:
             validator = choice(validator, tuple([
@@ -353,9 +371,6 @@ class Expecter(object):
 
             else:
                 validator = max_length(validator, field.max_length)
-
-        if field.validators:
-            validator = django_validator(validator, *field.validators)
 
         if field.__class__ is models.ManyToManyField:
             if field.blank:
@@ -396,23 +411,52 @@ class Expecter(object):
 # validator helpers
 #
 
-def no_none(validator):
-    '''or_none(__builtins__['int']) -> int_no_none_validator
+def blank(validator):
+    '''blank(validator) -> validator_blank
 
-    Given a function that returns ValueError when the given value is invalid,
+    Short circuit a validator and return the empty value if an empty value is
+    given.
+    '''
+    def blank_validator(value, expect):
+        if value == '':
+            return value
+        return validator(value, expect)
+    return wraps(blank_validator, validator, '_blank')
+
+def blank_not(validator):
+    '''blank_not(validator) -> validator_blank_not
+
+    Short circuit a validator and raise ValueError if an empty value is given.
+    '''
+    def blank_not_validator(value, expect):
+        if value == '':
+            raise ValueError(
+                '%s does not accept blank values'
+                % blank_not_validator.__name__
+            )
+        return validator(value, expect)
+    return wraps(blank_not_validator, validator, '_blank_not')
+
+def no_none(validator):
+    '''or_none(validator) -> validator_no_none
+
+    Given a validator returns ValueError when the given value is invalid,
     wrap it in such a way that it will properly handle being given None and
     raise ValueError.
     '''
     def no_none_validator(value, expect):
         if value is None:
-            raise ValueError('%s does not accept None' % validator.__name__)
+            raise ValueError(
+                '%s does not accept None'
+                % no_none_validator.__name__
+            )
         return validator(value, expect)
     return wraps(no_none_validator, validator, '_no_none')
 
 def or_none(validator):
-    '''or_none(__builtins__['int']) -> int_or_none_validator
+    '''or_none(validator) -> validator_or_none
 
-    Given a function that returns ValueError when the given value is invalid,
+    Given a validator returns ValueError when the given value is invalid,
     wrap it in such a way that it will properly handle being given None and
     return None.
     '''

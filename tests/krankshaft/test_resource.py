@@ -515,7 +515,7 @@ class ResourceTest(TestCaseNoDB):
         assert response['Content-Type'] == 'application/json; charset=utf-8'
         assert json.loads(response.content) == {
             'error': 'Invalid ID for model ModelForeign',
-            'invalid': [u"invalid literal for int() with base 10: ''"],
+            'invalid': [u"int_or_none_range_1_to_2147483647_no_none_blank_not does not accept blank values"],
         }
 
     def test_get_single(self):
