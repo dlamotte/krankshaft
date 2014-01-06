@@ -50,11 +50,25 @@
   bb.ks.sync = function(method, model, opts) {
     opts = opts || {};
 
+    _.defaults(opts, {
+      promise: true
+    });
+
     if (model.api) {
       opts = model.api.auth.update(opts);
     }
 
-    return ks.deferred_to_promise(bb.sync(method, model, opts))
+    var xhr = bb.sync(method, model, opts);
+    if (opts.promise) {
+      return bb.ks.sync_xhr_to_promise(xhr);
+    }
+    else {
+      return xhr;
+    }
+  };
+
+  bb.ks.sync_xhr_to_promise = function(xhr) {
+    return ks.deferred_to_promise(xhr)
     .then(function(xhr) {
       var location = xhr.getResponseHeader('Location');
       if (! xhr.data
