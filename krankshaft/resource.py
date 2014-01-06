@@ -331,7 +331,7 @@ class DjangoModelResource(object):
         instances.sort(key=lambda instance: ids.index(instance.pk))
         return instances
 
-    def fetch_list(self, request, query):
+    def fetch_list(self, request, query, qs=None):
         '''fetch_list(request, query) -> instances
 
         Ideally, calling functions would do:
@@ -343,8 +343,11 @@ class DjangoModelResource(object):
         if not isinstance(query, self.Query):
             query = self.make_query(query)
 
+        if qs is None:
+            qs = self.get_query_set(request)
+
         try:
-            qs, meta = query.apply(self.get_query_set(request))
+            qs, meta = query.apply(qs)
         except self.Query.Issues as exc:
             self.api.abort(self.api.serialize(request, 403, {
                 'error': 'There are issues with your query',
@@ -364,14 +367,17 @@ class DjangoModelResource(object):
 
         return instances, meta
 
-    def fetch_set(self, request, idset):
+    def fetch_set(self, request, idset, qs=None):
         '''fetch_set(request, idset) -> instances
 
         Fetch a set of instances given idset which is in the format of a string
         of semi-colon separated ids.  Handles ensuring all instances are found.
         '''
+        if qs is None:
+            qs = self.get_query_set(request)
+
         idset = [self.clean_id(request, id) for id in idset.split(';')]
-        instances = list(self.get_query_set(request).filter(pk__in=idset))
+        instances = list(qs.filter(pk__in=idset))
 
         set_ids = set(idset)
         set_instance_pks = set([instance.pk for instance in instances])
@@ -386,7 +392,7 @@ class DjangoModelResource(object):
 
         return instances
 
-    def fetch_single(self, request, query, id):
+    def fetch_single(self, request, query, id, qs=None):
         '''fetch_single(request, query, id) -> instance
 
         Fetch a single instance from the database handling when an instance
@@ -395,7 +401,9 @@ class DjangoModelResource(object):
         if query and not isinstance(query, self.Query):
             query = self.make_query(query)
 
-        qs = self.get_query_set(request)
+        if qs is None:
+            qs = self.get_query_set(request)
+
         meta = None
         if query:
             try:
