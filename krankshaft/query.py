@@ -1,5 +1,9 @@
+from django.db import models
 from . import util, valid
 from .exceptions import KrankshaftError, QueryIssues
+
+# TODO desperately needs to use expect() from the valid module to properly
+# coerce field specific data and validate it
 
 class Query(object):
     '''
@@ -213,8 +217,21 @@ class DjangoQuery(Query):
                         % name
                     )
 
-            if value == 'null':
-                value = None
+            elif not lookup:
+                if field.null and value == 'null':
+                    value = None
+
+                if value and isinstance(field, (
+                    models.BooleanField,
+                    models.NullBooleanField
+                )):
+                    try:
+                        value = valid.bool(value, None)
+                    except ValueError as exc:
+                        errors.append(
+                            'Boolean fields require a truthy/falsey value: %s'
+                            % name
+                        )
 
             query = query.filter(**{name: value})
 
