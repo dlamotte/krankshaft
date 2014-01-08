@@ -14,6 +14,7 @@ class Fake(models.Model):
     char_indexed = models.CharField(max_length=20, db_index=True)
     char_unindexed = models.CharField(max_length=20)
     foreign = models.ForeignKey(FakeForeign)
+    integer = models.IntegerField(null=True)
 
 class QueryTest(TestCaseNoDB):
     def setUp(self):
@@ -147,6 +148,9 @@ class DjangoQueryTest(QueryTest):
 
     def test_apply_filter_lookup_isnull_invalid_param(self):
         self.apply_raises({'char_indexed__isnull': 'a'})
+
+    def test_apply_filter_null(self):
+        self.apply_assert({'char_indexed': 'value', 'integer': 'null'})
 
     def test_apply_limit(self):
         queryset = self.apply_assert({'limit': '1'})

@@ -213,6 +213,9 @@ class DjangoQuery(Query):
                         % name
                     )
 
+            if value == 'null':
+                value = None
+
             query = query.filter(**{name: value})
 
         if used_filter \
