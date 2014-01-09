@@ -505,10 +505,11 @@ class DjangoModelResource(object):
 
     def make_related_validator(self, field, expected, many=False):
         def related_validator(value, expect):
-            try:
-                value = expect([valid.string], value if many else [value])
-            except expect.ValueIssue:
-                raise ValueError('Expected uri')
+            if value:
+                try:
+                    value = expect([valid.string], value if many else [value])
+                except expect.ValueIssue:
+                    raise ValueError('Expected uri')
 
             resource = self.related_lookup(field)
             if value is not None and resource:
