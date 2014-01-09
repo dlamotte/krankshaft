@@ -1,4 +1,4 @@
-from . import util
+from . import util, valid
 from .exceptions import KrankshaftError
 from .query import DjangoQuery
 from django.core.files import File
@@ -505,11 +505,15 @@ class DjangoModelResource(object):
 
     def make_related_validator(self, field, expected, many=False):
         def related_validator(value, expect):
+            try:
+                value = expect([valid.string], value if many else [value])
+            except expect.ValueIssue:
+                raise ValueError('Expected uri')
+
             resource = self.related_lookup(field)
             if value is not None and resource:
                 try:
-                    resolved_resource, value = \
-                        self.api.resolve(value if many else [value])
+                    resolved_resource, value = self.api.resolve(value)
 
                     if resolved_resource != resource:
                         raise self.api.ResolveError(
