@@ -249,7 +249,7 @@ class DjangoModelResource(object):
         code = None
         detail = None
         while True:
-            if self.version_field and instance:
+            if instance and instance.pk and self.version_field:
                 if self.version_field not in clean:
                     code = 400
                     detail = {
