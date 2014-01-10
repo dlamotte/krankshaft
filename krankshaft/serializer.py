@@ -20,6 +20,12 @@ class Serializer(object):
     class SerializableExists(KrankshaftError): pass
     class Unsupported(KrankshaftError): pass
 
+    # TODO instead of namedtuple, make it a class that when coerced to unicode
+    # or str, returns the data to reduce errors when doing:
+    # HttpResponse(
+    #   content=serializer.serialize(obj, accept='application/json'),
+    #   mimetype='application/json'
+    # )
     SerializedContainer = \
         namedtuple('SerializedContainer', ['data', 'content_type'])
 
