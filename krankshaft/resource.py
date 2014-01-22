@@ -10,6 +10,13 @@ try:
 except ImportError:
     from .compat.xact import xact as atomic
 
+# TODO implement some concepts from:
+#   http://clevertech.biz/devblog/successful-rest-api-design/
+#
+#   - metadata follow-up actions
+#
+# TODO also: http://stateless.co/hal_specification.html
+#
 # TODO consider subresources instead of prefetch_related()
 #   ie: manytomany: [
 #       '/api/v1/many/1/',
