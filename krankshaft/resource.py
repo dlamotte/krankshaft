@@ -29,6 +29,11 @@ except ImportError:
 #   - current behavior of prefetch_related() and resource uris to related
 #   - subresource behavior described above
 #
+# new thought: /api/v1/resource/set/1;2;3/many/
+# considerably easier to construct and saves the api from expensive
+# prefetch_related just to expose related urls... This probably needs to just
+# happen...
+#
 # XXX both methods have pros and cons
 #   current:
 #       pros:
@@ -48,6 +53,7 @@ except ImportError:
 #             for all related resources... its non-trivial
 #             (does object and related get merged on the server or client?
 #             it may only be possible on the server...)
+#             TODO SOLVED!!!
 #
 # regardless, at this point, both methods are trivial to implement...
 class DjangoModelResource(object):
