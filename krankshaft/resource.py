@@ -433,6 +433,9 @@ class DjangoModelResource(object):
         except self.model.DoesNotExist:
             self.api.abort(self.api.response(request, 404))
 
+        except ValueError:
+            self.api.abort(self.api.response(request, 405))
+
         self.is_authorized(request, instance)
 
         return instance
