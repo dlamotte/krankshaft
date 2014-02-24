@@ -434,7 +434,7 @@ class DjangoModelResource(object):
             self.api.abort(self.api.response(request, 404))
 
         except ValueError:
-            self.api.abort(self.api.response(request, 405))
+            self.api.abort(self.api.response(request, 400))
 
         self.is_authorized(request, instance)
 
