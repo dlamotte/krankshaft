@@ -25,7 +25,7 @@ except IOError:
 
 setup(
     name='krankshaft',
-    version='0.3.3',
+    version='0.3.4',
     author='Dan LaMotte',
     author_email='lamotte85@gmail.com',
     url='https://github.com/dlamotte/krankshaft',
