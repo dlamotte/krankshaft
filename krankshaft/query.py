@@ -370,7 +370,7 @@ class DjangoQuery(Query):
 
     @classmethod
     def is_indexed(cls, field):
-        return field.db_index or field.primary_key
+        return field.db_index or field.primary_key or field.unique
 
     def make_meta(self, limit, offset):
         meta = {
