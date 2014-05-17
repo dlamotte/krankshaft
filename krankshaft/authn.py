@@ -93,7 +93,9 @@ class AuthnDjango(Authn):
 
     def find_realm(self):
         from django.contrib.sites.models import Site
-        return Site.objects.get_current().name
+        if Site._meta.installed:
+            return Site.objects.get_current().name
+        return ''
 
     def is_valid(self, authned):
         return authned.user.is_active
