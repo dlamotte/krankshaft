@@ -117,7 +117,7 @@ class AuthnDjangoAPIToken(AuthnDjango):
 
     def __init__(self, model, **kwargs):
         super(AuthnDjangoAPIToken, self).__init__(**kwargs)
-        self.model = model
+        self._model = model
 
     def authenticate(self, request):
         try:
@@ -142,6 +142,13 @@ class AuthnDjangoAPIToken(AuthnDjango):
 
     def is_valid(self, authned):
         return authned.is_valid()
+
+    @property
+    def model(self):
+        from django.db.models import get_model
+        if isinstance(self._model, str):
+            self._model = get_model(*self._model.split('.', 1))
+        return self._model
 
 class AuthnDjangoBasic(AuthnDjango):
     '''
