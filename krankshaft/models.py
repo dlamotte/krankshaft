@@ -15,7 +15,7 @@ class APITokenBase(models.Model):
             token = models.TextField()
 
             @classmethod
-            def get(cls, owner, token):
+            def get_api_token(cls, owner, token):
                 return cls.objects \
                     .select_related('user') \
                     .get(
@@ -45,7 +45,7 @@ class APITokenBase(models.Model):
         abstract = True
 
     @classmethod
-    def get(cls, owner, token):
+    def get_api_token(cls, owner, token):
         raise NotImplementedError
 
     def is_valid(self):

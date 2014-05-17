@@ -123,8 +123,14 @@ class AuthnDjangoAPIToken(AuthnDjango):
         except TypeError:
             return None
 
+        method = getattr(self.model, 'get_api_token', None)
+        if not method:
+            import warnings
+            warnings.warn('AuthnDjangoAPIToken.model.get is deprecated')
+            method = getattr(self.model, 'get')
+
         try:
-            return self.model.get(owner, token)
+            return method(owner, token)
         except (self.model.DoesNotExist, self.model.MultipleObjectsReturned):
             return None
 
