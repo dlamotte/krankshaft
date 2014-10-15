@@ -224,16 +224,27 @@ class Expecter(object):
         You probably dont want to use this directly.
         '''
         clean = {}
-        data_keys = set(data.keys())
+        data_keys_set = set(data.keys())
         errors = {}
-        expected_keys = set(expected.keys())
+        expected_keys = expected.keys()
+        expected_keys_set = set(expected_keys)
 
-        if (
+        processed = False
+        if len(expected_keys) == 1 and hasattr(expected_keys[0], '__call__'):
+            processed = True
+            for key in data_keys_set:
+                try:
+                    clean[key] = \
+                        self.expect(expected_keys[0], data[key], **opts)
+                except self.ValueIssue as exc:
+                    errors[key] = exc.errors
+
+        elif (
             not (opts['ignore_extra_keys'] and opts['ignore_missing_keys'])
-            and expected_keys != data_keys
+            and expected_keys_set != data_keys_set
         ):
-            extra_keys = data_keys - expected_keys
-            missing_keys = expected_keys - data_keys
+            extra_keys = data_keys_set - expected_keys_set
+            missing_keys = expected_keys_set - data_keys_set
             if not opts['ignore_extra_keys'] and extra_keys:
                 errors.setdefault('__nonkeyerrors__', []) \
                     .append('Extra keys: %s' % ', '.join(list(extra_keys)))
@@ -242,12 +253,14 @@ class Expecter(object):
                 errors.setdefault('__nonkeyerrors__', []) \
                     .append('Missing keys: %s' % ', '.join(list(missing_keys)))
 
-        for key in (expected_keys & data_keys):
-            try:
-                clean[key] = self.expect(expected[key], data[key], **opts)
+        if not processed:
+            processed = True
+            for key in (expected_keys_set & data_keys_set):
+                try:
+                    clean[key] = self.expect(expected[key], data[key], **opts)
 
-            except self.ValueIssue as exc:
-                errors[key] = exc.errors
+                except self.ValueIssue as exc:
+                    errors[key] = exc.errors
 
         if errors:
             raise self.ValueIssue(errors)
