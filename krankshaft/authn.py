@@ -93,7 +93,9 @@ class AuthnDjango(Authn):
 
     def find_realm(self):
         from django.contrib.sites.models import Site
-        return Site.objects.get_current().name
+        if Site._meta.installed:
+            return Site.objects.get_current().name
+        return ''
 
     def is_valid(self, authned):
         return authned.user.is_active
@@ -115,7 +117,7 @@ class AuthnDjangoAPIToken(AuthnDjango):
 
     def __init__(self, model, **kwargs):
         super(AuthnDjangoAPIToken, self).__init__(**kwargs)
-        self.model = model
+        self._model = model
 
     def authenticate(self, request):
         try:
@@ -123,8 +125,14 @@ class AuthnDjangoAPIToken(AuthnDjango):
         except TypeError:
             return None
 
+        method = getattr(self.model, 'get_api_token', None)
+        if not method:
+            import warnings
+            warnings.warn('AuthnDjangoAPIToken.model.get is deprecated')
+            method = getattr(self.model, 'get')
+
         try:
-            return self.model.get(owner, token)
+            return method(owner, token)
         except (self.model.DoesNotExist, self.model.MultipleObjectsReturned):
             return None
 
@@ -134,6 +142,13 @@ class AuthnDjangoAPIToken(AuthnDjango):
 
     def is_valid(self, authned):
         return authned.is_valid()
+
+    @property
+    def model(self):
+        from django.db.models import get_model
+        if isinstance(self._model, str):
+            self._model = get_model(*self._model.split('.', 1))
+        return self._model
 
 class AuthnDjangoBasic(AuthnDjango):
     '''
