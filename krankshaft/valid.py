@@ -233,11 +233,18 @@ class Expecter(object):
         if len(expected_keys) == 1 and hasattr(expected_keys[0], '__call__'):
             processed = True
             for key in data_keys_set:
+                # validate key
+                try:
+                    self.expect(expected_keys[0], key, **opts)
+                except self.ValueIssue as exc:
+                    errors.setdefault(key, []).extend(exc.errors)
+
+                # validate value
                 try:
                     clean[key] = \
                         self.expect(expected_keys[0], data[key], **opts)
                 except self.ValueIssue as exc:
-                    errors[key] = exc.errors
+                    errors.setdefault(key, []).extend(exc.errors)
 
         elif (
             not (opts['ignore_extra_keys'] and opts['ignore_missing_keys'])
