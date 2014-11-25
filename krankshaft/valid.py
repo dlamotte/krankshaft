@@ -718,6 +718,13 @@ def datetime_or_none(value, expect):
     return value
 datetime = no_none(datetime_or_none)
 
+def dict_or_none(value, expect):
+    if value is not None:
+        if not isinstance(value, __builtins__['dict']):
+            raise ValueError('Not a dict: %s' % value)
+    return value
+dict = no_none(dict_or_none)
+
 def django_file_or_none(value, expect):
     if value is not None and not isinstance(value, File):
         raise ValueError('No django file found')
