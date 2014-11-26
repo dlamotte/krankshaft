@@ -756,6 +756,11 @@ django_image = no_none(django_image_or_none)
 email = django_validator(string, validators.validate_email)
 email_or_none = django_validator(string_or_none, validators.validate_email)
 
+def none(value, expect):
+    if value is not None:
+        raise ValueError('Value is expected to be None')
+    return value
+
 def slug_or_none(value, expect):
     value = string_or_none(value, expect)
     if value is not None:
