@@ -945,3 +945,25 @@ class API(object):
             # @api(param=val)
             # class/def ...
             return decorator
+
+    def wrap_and_route(self, obj):
+        '''wrap_and_route(self)
+
+        When starting with a `urls` property on an object, you initially do
+        a really simple idiom.  This simply makes it easier.
+
+            @property
+            def urls(self):
+                from django.conf.urls import patterns, urls
+                return patterns('',
+                    url('^url/to/respond/to/$', api.wrap_and_route(self)),
+                )
+
+        When you need more flexibility, you can remove the `wrap_and_route` and
+        define your own routing but for the simplest case where you just want
+        the default routing, this is helpful.
+        '''
+        return self.wrap(
+            lambda request, *args, **kwargs:
+                self.route(obj, request, args, kwargs)
+        )
