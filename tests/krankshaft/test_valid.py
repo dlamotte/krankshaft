@@ -499,7 +499,7 @@ class ValidatorsTest(BaseExpecterTest):
         self.expect_raises(valid.list_n_or_more(valid.int, 1), ['a',2], errors={0: ["invalid literal for int() with base 10: 'a'"]})
 
     def test_list_n_or_more_invalid_n(self):
-        self.assertRaises(valid.KrankshaftError, valid.list_n_or_more, valid.int, 0)
+        self.assertRaises(valid.KrankshaftError, valid.list_n_or_more, valid.int, -1)
 
     def test_slug(self):
         self.expect(valid.slug, 'HELLO WORLD', 'hello-world')

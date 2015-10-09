@@ -569,9 +569,9 @@ def list_n_or_more(validator, n):
     Wrap a validator that also validates the returned list has one or more
     members.
     '''
-    if n < 1:
+    if n < 0:
         raise KrankshaftError(
-            'list_n_or_more only accepts values >= 1, not %s' % n
+            'list_n_or_more only accepts values >= 0, not %s' % n
         )
 
     def list_n_or_more_validator(data, expect):
