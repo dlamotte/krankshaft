@@ -284,7 +284,7 @@ class API(object):
             with Annotate(request, {
                 'auth': auth,
                 'throttle': throttle,
-            }, delete=['user']):
+            }, delete=['user'], cleanup=False):
                 return view(request, *args, **kwargs)
 
         except Exception:
