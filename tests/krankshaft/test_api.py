@@ -127,7 +127,7 @@ class APITest(TestCaseNoDB):
         request.user = AnonymousUser()
         self.assertEqual(hasattr(request, 'auth'), False)
         self.assertEqual(fakeview(request), True)
-        self.assertEqual(hasattr(request, 'auth'), False)
+        self.assertEqual(hasattr(request, 'auth'), True)
 
     def test_auth_deny(self):
         response = self.client.get('/deny/?key=value')
