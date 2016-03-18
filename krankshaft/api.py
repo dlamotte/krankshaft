@@ -285,6 +285,8 @@ class API(object):
                 'auth': auth,
                 'throttle': throttle,
             }, delete=['user'], cleanup=False):
+                from django.contrib.auth.models import AnonymousUser
+                request.user = auth.user or AnonymousUser()
                 return view(request, *args, **kwargs)
 
         except Exception:

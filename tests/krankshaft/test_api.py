@@ -119,8 +119,7 @@ class APITest(TestCaseNoDB):
         def fakeview(request):
             return \
                 hasattr(request, 'auth') \
-                and isinstance(request.auth, self.api.Auth) \
-                and not hasattr(request, 'user')
+                and isinstance(request.auth, self.api.Auth)
         fakeview = self.api(fakeview)
 
         request = self.make_request()
