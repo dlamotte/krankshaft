@@ -1,6 +1,10 @@
 krankshaft
 ==========
 
+.. image:: http://unmaintained.tech/badge.svg
+:target: http://unmaintained.tech/
+:alt: No Maintenance Intended
+
 A Web API Framework.
 
 Currently only supports Django, but designed to work for
