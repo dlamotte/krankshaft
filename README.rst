@@ -17,7 +17,7 @@ will be built in directly.
 .. image:: https://coveralls.io/repos/dlamotte/krankshaft/badge.png
    :target: https://coveralls.io/r/dlamotte/krankshaft
 
-.. image:: https://pypip.in/v/krankshaft/badge.png
+.. image:: https://img.shields.io/pypi/v/krankshaft.svg
    :target: https://pypi.python.org/pypi/krankshaft
 
 .. image:: https://d2weczhvl823v0.cloudfront.net/dlamotte/krankshaft/trend.png
