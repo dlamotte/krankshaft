@@ -245,5 +245,7 @@ class Serializer(object):
 
         if opts:
             convert = partial(convert, **opts)
+        if 'convert_decimal' in opts:
+            convert = self.convert_decimal
 
         return json.dumps(obj, default=convert, **dopts)
